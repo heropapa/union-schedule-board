@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>유니온물류 스케쥴</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        /* 공통 탭 스타일 (모바일에서만 사용) */
+
+        .tabs {
+            display: flex;
+            background-color: #f1f1f1;
+            padding: 10px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+
+        .tablink {
+            padding: 8px 12px;
+            background-color: #ddd;
+            border-radius: 4px;
+            text-decoration: none;
+            color: black;
+            margin-right: 10px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .tablink.active {
+            background-color: #aaa;
+        }
+
+        .iframe-container {
+            width: 100vw;
+            height: calc(100vh - 80px);
+            padding: 10px;
+            overflow: auto;
+            position: relative;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            transform-origin: top left;
+        }
+
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            color: #333;
+            pointer-events: none; /* 혹시 안 사라져도 클릭 막지 않게 */
+        }
+
+        /* PC / 모바일 전용 섹션 */
+
+        .pc-only, .mobile-only {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* PC용 버튼 스타일 */
+
+        .pc-wrapper {
+            padding: 20px;
+        }
+
+        .pc-btn-list {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 360px;
+        }
+
+        .pc-btn {
+            display: block;
+            padding: 12px 16px;
+            background: #1976d2;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 15px;
+        }
+
+        .pc-btn.current-month {
+            background: #d32f2f;
+            font-weight: bold;
+        }
+
+        .pc-btn.secondary {
+            background: #455a64;
+        }
+
+        .pc-info {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <!-- PC 전용 화면: 단순 링크만 제공 (절대 안 죽게) -->
+    <div class="pc-only">
+        <div class="pc-wrapper">
+            <h3>🚛 유니온물류 스케쥴 (PC)</h3>
+            <p class="pc-info">
+                PC에서는 아래 버튼을 눌러 각 스케쥴/인원정보를 새 탭에서 확인해 주세요.<br>
+                <span style="color:#d32f2f;">■ 빨간 버튼이 오늘 날짜 기준 해당 월입니다.</span>
+            </p>
+            <div class="pc-btn-list">
+                <a class="pc-btn" data-month="7" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQuvqBPEHp90pfvnynBhtno_qIWlvlgJCsXWnuc8pjItCINvW35qYeJtzHMsRTVTYmTmQHyeR6U2Oqw/pubhtml?gid=780158230&single=true&widget=true&headers=false&chrome=false" target="_blank">
+                    📅 2026년 7월 스케쥴 열기
+                </a>
+                <a class="pc-btn" data-month="8" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vR3PPNiR_rTg_WCHpAH0k7abIT7brABZsPG9YM5wHI0NjprUS7OR6ogWereLfTy4KyODJpv6qXFBLPi/pubhtml?gid=780158230&single=true&widget=true&headers=false&chrome=false" target="_blank">
+                    📅 2026년 8월 스케쥴 열기
+                </a>
+                <a class="pc-btn" data-month="9" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vROURhdp0-8yIfXaK7bOQVkqTGChp_oaCgaZY_cPkN4lMqFH60ZU-oTgkZKkx24UZnSMJbRUlfP3Mj1/pubhtml?gid=780158230&single=true&widget=true&headers=false&chrome=false" target="_blank">
+                    📅 2026년 9월 스케쥴 열기
+                </a>
+                <a class="pc-btn secondary" href="https://chimerical-rolypoly-4892d4.netlify.app" target="_blank">
+                    📌 인원정보 페이지 열기
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모바일 전용 화면: 기존 탭 + iframe + 자동 스케일 -->
+    <div class="mobile-only">
+        <h3 style="padding: 10px;">🚛 유니온물류 스케쥴</h3>
+
+        <div class="tabs">
+            <a class="tablink" data-month="7" onclick="switchTab('schedule17', this)">📅 2026년 7월</a>
+            <a class="tablink" data-month="8" onclick="switchTab('schedule18', this)">📅 2026년 8월</a>
+            <a class="tablink" data-month="9" onclick="switchTab('schedule19', this)">📅 2026년 9월</a>
+            <a class="tablink" onclick="switchTab('personnel', this)">📌 인원정보</a>
+        </div>
+
+        <!-- 7월 -->
+        <div class="iframe-container" id="schedule17" data-month="7" style="display:none;">
+            <div class="loading">로딩중...</div>
+            <iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQuvqBPEHp90pfvnynBhtno_qIWlvlgJCsXWnuc8pjItCINvW35qYeJtzHMsRTVTYmTmQHyeR6U2Oqw/pubhtml?gid=780158230&single=true&widget=true&headers=false&chrome=false"></iframe>
+        </div>
+
+        <!-- 8월 -->
+        <div class="iframe-container" id="schedule18" data-month="8" style="display:none;">
+            <div class="loading">로딩중...</div>
+            <iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vR3PPNiR_rTg_WCHpAH0k7abIT7brABZsPG9YM5wHI0NjprUS7OR6ogWereLfTy4KyODJpv6qXFBLPi/pubhtml?gid=780158230&single=true&widget=true&headers=false&chrome=false"></iframe>
+        </div>
+
+        <!-- 9월 -->
+        <div class="iframe-container" id="schedule19" data-month="9" style="display:none;">
+            <div class="loading">로딩중...</div>
+            <iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vROURhdp0-8yIfXaK7bOQVkqTGChp_oaCgaZY_cPkN4lMqFH60ZU-oTgkZKkx24UZnSMJbRUlfP3Mj1/pubhtml?gid=780158230&single=true&widget=true&headers=false&chrome=false"></iframe>
+        </div>
+
+        <!-- 인원정보 -->
+        <div class="iframe-container" id="personnel" style="display:none;">
+            <div class="loading">로딩중...</div>
+            <iframe src="https://chimerical-rolypoly-4892d4.netlify.app"></iframe>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // --- 오늘 날짜 기준 활성화 대상 월 결정 ---
+            // 1) 오늘의 월과 일치하는 탭이 있으면 그걸 선택
+            // 2) 없으면 (아직 업로드 안된 미래월/지난해 월 등) 가장 최근(=숫자 큰) 월로 fallback
+            function pickActiveMonthTabId() {
+                const today = new Date();
+                const currentMonth = today.getMonth() + 1; // 1~12
+
+                const allTabs = Array.from(document.querySelectorAll('.tablink[data-month]'));
+                if (allTabs.length === 0) return null;
+
+                const monthsAvailable = allTabs
+                    .map(el => parseInt(el.getAttribute('data-month'), 10))
+                    .filter(n => !Number.isNaN(n))
+                    .sort((a, b) => a - b);
+
+                // 1) 정확히 일치하는 월
+                if (monthsAvailable.includes(currentMonth)) {
+                    return 'schedule1' + currentMonth;
+                }
+                // 2) 현재월보다 작거나 같은 월 중 가장 큰 값(가장 최근 지난달)
+                const pastOrCurrent = monthsAvailable.filter(m => m <= currentMonth);
+                if (pastOrCurrent.length > 0) {
+                    const latestPast = pastOrCurrent[pastOrCurrent.length - 1];
+                    return 'schedule1' + latestPast;
+                }
+                // 3) 그것도 없으면 가장 가까운 미래월 (=최소값)
+                const nearestFuture = monthsAvailable[0];
+                return 'schedule1' + nearestFuture;
+            }
+
+            const screenWidth = window.innerWidth;
+            const spreadsheetWidth = 930;
+            const isDesktop = screenWidth >= spreadsheetWidth;
+
+            if (isDesktop) {
+                // PC: 모바일용 DOM은 제거, PC용만 사용
+                const mobile = document.querySelector('.mobile-only');
+                if (mobile) mobile.remove();
+
+                // PC에서는 현재 월 버튼만 강조
+                const currentMonth = new Date().getMonth() + 1;
+                const pcBtns = document.querySelectorAll('.pc-btn[data-month]');
+                const pcMonths = Array.from(pcBtns)
+                    .map(b => parseInt(b.getAttribute('data-month'), 10))
+                    .filter(n => !Number.isNaN(n))
+                    .sort((a, b) => a - b);
+
+                let targetMonth = null;
+                if (pcMonths.includes(currentMonth)) {
+                    targetMonth = currentMonth;
+                } else {
+                    const pastOrCurrent = pcMonths.filter(m => m <= currentMonth);
+                    if (pastOrCurrent.length > 0) {
+                        targetMonth = pastOrCurrent[pastOrCurrent.length - 1];
+                    } else if (pcMonths.length > 0) {
+                        targetMonth = pcMonths[0];
+                    }
+                }
+
+                if (targetMonth != null) {
+                    const btn = document.querySelector('.pc-btn[data-month="' + targetMonth + '"]');
+                    if (btn) btn.classList.add('current-month');
+                }
+
+                return; // 이하 모바일용 스크립트는 실행 안 함
+            }
+
+            // 모바일: PC용은 안 보이게 처리
+            const pc = document.querySelector('.pc-only');
+            if (pc) pc.style.display = 'none';
+
+            // ---- 아래는 모바일에서만 사용하는 로직 ----
+
+            // 전역에서 쓸 수 있도록 window에 붙임 (onclick에서 사용)
+            window.switchTab = function(tabId, el) {
+                const containers = document.getElementsByClassName('iframe-container');
+                const tabs = document.getElementsByClassName('tablink');
+
+                for (let container of containers) {
+                    container.style.display = 'none';
+                }
+
+                for (let tab of tabs) {
+                    tab.classList.remove('active');
+                }
+
+                const target = document.getElementById(tabId);
+                if (target) {
+                    target.style.display = 'block';
+                }
+
+                if (el) {
+                    el.classList.add('active');
+                }
+
+                adjustIframeScale();
+            };
+
+            function adjustIframeScale() {
+                const iframes = document.getElementsByTagName('iframe');
+                const screenWidth = window.innerWidth;
+                const spreadsheetWidth = 930;
+                const scale = screenWidth / spreadsheetWidth;
+
+                for (let iframe of iframes) {
+                    iframe.style.transform = `scale(${scale})`;
+                    iframe.style.width = `${100 / scale}%`;
+                    iframe.style.height = `${100 / scale}%`;
+                }
+            }
+
+            // 오늘 날짜 기준 탭 자동 활성화
+            const activeTabId = pickActiveMonthTabId();
+            if (activeTabId) {
+                const activeTabEl = document.querySelector('.tablink[onclick*="' + activeTabId + '"]');
+                window.switchTab(activeTabId, activeTabEl);
+            }
+
+            window.addEventListener('load', adjustIframeScale);
+            window.addEventListener('resize', adjustIframeScale);
+
+            document.querySelectorAll('iframe').forEach(iframe => {
+                iframe.addEventListener('load', () => {
+                    const loader = iframe.parentElement.querySelector('.loading');
+                    if (loader) loader.style.display = 'none';
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
