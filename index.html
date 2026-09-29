@@ -14,7 +14,7 @@
         background: #f4f5f7; color: #222;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
     }
-    button, select { font-family: inherit; }
+    button { font-family: inherit; }
     [hidden] { display: none !important; }
 
     /* 상단: 제목 + 주간/야간 전환 (한 줄로 → 시트 볼 공간 확보) */
@@ -27,24 +27,16 @@
     main { flex: 1; min-height: 0; overflow: auto; }
     #day { height: 100%; }
 
-    /* 주간 - 모바일: 월 탭 + 스프레드시트 (기존 방식 유지) */
-    .day-mobile { display: flex; flex-direction: column; height: 100%; }
-    .mtabs { flex: none; display: flex; gap: 8px; padding: 8px 10px; background: #f1f1f1; overflow-x: auto; }
+    /* 주간: 기간 탭 + 스프레드시트 (폰·PC 동일, PC에선 가운데 정렬) */
+    .day-view { display: flex; flex-direction: column; height: 100%; max-width: 970px; margin: 0 auto; }
+    .mtabs { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #f1f1f1; overflow-x: auto; }
+    .mtabs .open { flex: none; margin-left: auto; padding: 6px 10px; font-size: 15px; color: #1976d2; text-decoration: none; background: #fff; border: 1px solid #cfd4da; border-radius: 4px; }
     .mtabs button { padding: 8px 12px; font-size: 14px; color: #000; background: #ddd; border: 0; border-radius: 4px; white-space: nowrap; cursor: pointer; }
     .mtabs button.on { background: #aaa; }
     .frames { flex: 1; min-height: 0; position: relative; }
     .frame { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; padding: 10px; overflow: auto; }
     .frame iframe { width: 100%; height: 100%; border: none; transform-origin: top left; }
     .loading { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #333; background: rgba(255,255,255,.85); pointer-events: none; }
-
-    /* 주간 - PC: 새 탭으로 여는 버튼 (절대 안 죽게) */
-    .day-pc { padding: 20px; }
-    .pc-info { font-size: 13px; color: #555; line-height: 1.6; }
-    .pc-btn-list { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
-    .pc-btn { display: block; padding: 12px 16px; font-size: 15px; color: #fff; text-align: center; text-decoration: none; background: #1976d2; border-radius: 6px; }
-    .pc-btn.current-month { background: #d32f2f; font-weight: bold; }
-    @media (min-width: 930px) { .day-mobile { display: none; } }
-    @media (max-width: 929px) { .day-pc { display: none; } }
 
     /* 야간 */
     .night { max-width: 760px; margin: 0 auto; padding: 12px; }
@@ -53,12 +45,9 @@
     .n-bar .nav:disabled { opacity: .3; cursor: default; }
     .wk { min-width: 120px; text-align: center; font-size: 15px; font-weight: 700; }
     .todaybtn { height: 36px; padding: 0 12px; font-size: 13px; color: #1976d2; background: #fff; border: 1px solid #1976d2; border-radius: 8px; cursor: pointer; }
-    .me-pick { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
-    .me-pick select { height: 36px; padding: 0 6px; font-size: 16px; background: #fff; border: 1px solid #cfd4da; border-radius: 8px; }
     .summary { margin-bottom: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.7; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; }
     .lbl { display: inline-block; margin-right: 5px; padding: 0 7px; font-size: 12px; font-weight: 700; border-radius: 10px; }
     .lbl.off { background: #ffe3e6; color: #9c0006; }
-    .lbl.mine { background: #fff1bf; color: #6b5200; }
     .tbl-wrap { overflow-x: auto; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; }
     /* 고정 배치: 이름 칸 폭을 못 박고 날짜 7칸이 나머지를 균등 분할 (자동 배치는 좁은 폰에서 이름 칸이 부풀어 깨짐) */
     table.nt { width: 100%; min-width: 330px; table-layout: fixed; border-collapse: collapse; font-size: 12.5px; }
@@ -76,20 +65,20 @@
     .nt td.off { font-weight: 700; color: #9c0006; background: #ffe3e6; }
     .nt td.sub { font-weight: 700; color: #1f3864; background: #e3ecf7; }
     .nt td.today { box-shadow: inset 2px 0 0 #1976d2, inset -2px 0 0 #1976d2; }
-    .nt tr.row-me td { font-weight: 800; }
-    .nt tr.row-me .name { background: #fff1bf; }
     .nt .cnt { font-size: 11.5px; color: #777; }
     .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 2px 4px; font-size: 12px; color: #666; }
     .chip { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; border-radius: 3px; }
     .foot { margin: 6px 2px 16px; font-size: 11.5px; line-height: 1.6; color: #999; }
     @media (max-width: 480px) {   /* 아이폰 Plus/Pro Max(430px)까지 포함해야 520BCD가 안 잘림 */
+        .mtabs { gap: 6px; padding: 8px 8px; }
+        .mtabs button { padding: 8px 9px; }
+        .mtabs .open { padding: 6px 8px; }
         .night { padding: 10px 8px; }
         table.nt { font-size: 11.5px; }
         .nt th, .nt td { padding: 7px 1px; letter-spacing: -.2px; }
         .nt thead th.name { width: 60px; }
-        .me-pick { width: 100%; margin-left: 0; }
-        .me-pick select { flex: 1; }
     }
+    @media (max-width: 340px) { .mtabs .open { display: none; } }   /* 초소형 폰은 탭 3개가 우선 */
     @media (max-width: 380px) {
         .top h1 { font-size: 15px; }
         .seg button { padding: 7px 13px; }
@@ -111,12 +100,7 @@
 
 <main>
     <section id="day" hidden>
-        <div class="day-pc">
-            <p class="pc-info">PC에서는 아래 버튼을 눌러 월별 스케쥴을 새 탭에서 확인해 주세요.<br>
-                <span style="color:#d32f2f;">■ 빨간 버튼이 오늘 날짜 기준 해당 월입니다.</span></p>
-            <div class="pc-btn-list" id="dayButtons"></div>
-        </div>
-        <div class="day-mobile">
+        <div class="day-view">
             <nav class="mtabs" id="dayTabs"></nav>
             <div class="frames" id="dayFrames"></div>
         </div>
@@ -128,16 +112,17 @@
 <script>
 (function () {
     // ===================== 여기만 고치면 됩니다 =====================
-    // 주간: 매달 구글시트 '웹에 게시' 링크를 그대로 붙여넣기 (3개월 유지)
-    const DAY_MONTHS = [
-        { y: 2026, m: 9,  url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vROURhdp0-8yIfXaK7bOQVkqTGChp_oaCgaZY_cPkN4lMqFH60ZU-oTgkZKkx24UZnSMJbRUlfP3Mj1/pubhtml?gid=780158230&single=true' },
-        { y: 2026, m: 10, url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRhHcQAYNAu1bKNHdWQQfOFgwbnoKAgvewnvdqim0pZW1zed1OwpQrat_hpSph3Pq8lEo2XEGikZAOj/pubhtml?gid=780158230&single=true' },
-        { y: 2026, m: 11, url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT1rECnLbI8Mp9yf-kgmhbqo3YrNLH15dBUkD8X_4OpglSKPUZnbwrixEFUpktaO5izAxLgDhGxEca3/pubhtml?gid=780158230&single=true' },
+    // 주간: 시트 하나 = 4주(일~토) 기간. 구글시트 '웹에 게시' 링크 + 그 시트의 첫날/마지막날 (3개 유지)
+    //       기간은 python tools/day_range.py <링크> 로 시트에서 자동으로 뽑을 수 있음
+    const DAY_SHEETS = [
+        { from: '2026-08-16', to: '2026-09-12', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vROURhdp0-8yIfXaK7bOQVkqTGChp_oaCgaZY_cPkN4lMqFH60ZU-oTgkZKkx24UZnSMJbRUlfP3Mj1/pubhtml?gid=780158230&single=true' },
+        { from: '2026-09-13', to: '2026-10-10', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRhHcQAYNAu1bKNHdWQQfOFgwbnoKAgvewnvdqim0pZW1zed1OwpQrat_hpSph3Pq8lEo2XEGikZAOj/pubhtml?gid=780158230&single=true' },
+        { from: '2026-10-11', to: '2026-11-07', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT1rECnLbI8Mp9yf-kgmhbqo3YrNLH15dBUkD8X_4OpglSKPUZnbwrixEFUpktaO5izAxLgDhGxEca3/pubhtml?gid=780158230&single=true' },
     ];
     // 야간: night-data.js 는 엑셀에서 자동 생성 (tools/convert_night.py)
     // ================================================================
 
-    const SHEET_WIDTH = 930;   // 이 폭 이상이면 PC 화면
+    const SHEET_WIDTH = 930;   // 주간 시트 원래 폭(px) — 이보다 좁은 화면에서만 축소, 넓으면 원래 크기
     const store = {
         get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
         set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
@@ -149,32 +134,31 @@
     const dateOf = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
     const now = new Date();
     const TODAY = isoOf(now);
+    const WD = ['일', '월', '화', '수', '목', '금', '토'];
+    const md = s => { const d = dateOf(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
+    const mdw = s => `${md(s)}(${WD[dateOf(s).getDay()]})`;
+    DAY_SHEETS.sort((a, b) => (a.from < b.from ? -1 : 1));
 
     // ------------------------- 주간 -------------------------
     const embedUrl = u => u.includes('widget=') ? u : u + (u.includes('?') ? '&' : '?') + 'widget=true&headers=false&chrome=false';
 
     function pickDayIndex() {
-        const cur = now.getFullYear() * 12 + now.getMonth() + 1;
-        const keys = DAY_MONTHS.map(x => x.y * 12 + x.m);
-        const exact = keys.indexOf(cur);
-        if (exact >= 0) return exact;
-        let best = -1;   // 지난 달 중 가장 최근
-        keys.forEach((k, j) => { if (k <= cur && (best < 0 || k > keys[best])) best = j; });
-        return best >= 0 ? best : keys.indexOf(Math.min(...keys));   // 전부 미래면 가장 가까운 달
+        const hit = DAY_SHEETS.findIndex(x => x.from <= TODAY && TODAY <= x.to);   // 오늘이 들어있는 기간
+        if (hit >= 0) return hit;
+        let best = -1;   // 이미 끝난 기간 중 가장 최근
+        DAY_SHEETS.forEach((x, j) => { if (x.to < TODAY && (best < 0 || x.to > DAY_SHEETS[best].to)) best = j; });
+        return best >= 0 ? best : 0;   // 전부 미래면 가장 가까운(첫) 기간
     }
-    const dayCur = DAY_MONTHS.length ? pickDayIndex() : -1;
+    const dayCur = DAY_SHEETS.length ? pickDayIndex() : -1;
 
     function buildDay() {
-        const btns = document.getElementById('dayButtons');
         const tabs = document.getElementById('dayTabs');
         const frames = document.getElementById('dayFrames');
-        DAY_MONTHS.forEach((x, i) => {
-            const label = `${x.y}년 ${x.m}월`;
-            btns.insertAdjacentHTML('beforeend',
-                `<a class="pc-btn${i === dayCur ? ' current-month' : ''}" href="${esc(embedUrl(x.url))}" target="_blank" rel="noopener">📅 ${label} 스케쥴 열기</a>`);
+        DAY_SHEETS.forEach((x, i) => {
+            const label = `${md(x.from)}~${md(x.to)}`;
             const b = document.createElement('button');
             b.type = 'button';
-            b.textContent = label;   // 폰 탭은 아이콘 빼서 3개월이 한 화면에 들어오게
+            b.textContent = label;
             b.addEventListener('click', () => showDayTab(i));
             tabs.appendChild(b);
             const f = document.createElement('div');
@@ -182,10 +166,12 @@
             f.hidden = true;
             frames.appendChild(f);
         });
+        // 새 창으로 크게 보기 (지금 보는 기간)
+        tabs.insertAdjacentHTML('beforeend', '<a class="open" id="dayOpen" target="_blank" rel="noopener" title="새 창으로 크게 보기" aria-label="새 창으로 크게 보기">↗</a>');
     }
 
     function scaleFrames() {
-        const s = window.innerWidth / SHEET_WIDTH;
+        const s = Math.min(1, window.innerWidth / SHEET_WIDTH);   // 넓은 화면(PC)에서 확대하지 않음
         document.querySelectorAll('#dayFrames iframe').forEach(ifr => {
             ifr.style.transform = `scale(${s})`;
             ifr.style.width = `${100 / s}%`;
@@ -199,27 +185,25 @@
         if (tabBtns[i] && tabBtns[i].scrollIntoView) tabBtns[i].scrollIntoView({ block: 'nearest', inline: 'nearest' });
         const frames = document.querySelectorAll('#dayFrames .frame');
         frames.forEach((f, j) => { f.hidden = j !== i; });
+        const open = document.getElementById('dayOpen');
+        if (open) open.href = embedUrl(DAY_SHEETS[i].url);
         const f = frames[i];
         if (f && !f.querySelector('iframe')) {   // 처음 볼 때만 불러옴 (안 보는 달은 로딩 안 함)
             f.innerHTML = '<div class="loading">로딩중...</div>';
             const ifr = document.createElement('iframe');
             ifr.addEventListener('load', () => { const l = f.querySelector('.loading'); if (l) l.remove(); });
-            ifr.src = embedUrl(DAY_MONTHS[i].url);
+            ifr.src = embedUrl(DAY_SHEETS[i].url);
             f.appendChild(ifr);
             scaleFrames();
         }
     }
 
     function ensureDayTab() {
-        if (window.innerWidth >= SHEET_WIDTH || dayCur < 0) return;   // PC는 버튼만
+        if (dayCur < 0) return;
         if (!document.querySelector('#dayTabs button.on')) showDayTab(dayCur);
     }
 
     // ------------------------- 야간 -------------------------
-    const WD = ['일', '월', '화', '수', '목', '금', '토'];
-    const md = s => { const d = dateOf(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
-    const mdw = s => `${md(s)}(${WD[dateOf(s).getDay()]})`;
-
     function buildNight() {
         const root = document.getElementById('night');
         const D = window.NIGHT_DATA;
@@ -245,10 +229,8 @@
         }
         const before = TODAY < first, after = TODAY > last;
         const homeWeek = before ? 0 : after ? weeks.length - 1 : weeks.findIndex(w => w.includes(TODAY));
-        const tomorrow = (() => { const t = new Date(now); t.setDate(t.getDate() + 1); return isoOf(t); })();
         let wi = homeWeek;
-        let me = store.get('night.me') || '';
-        if (!people.some(p => p.name === me)) me = '';
+        try { localStorage.removeItem('night.me'); } catch (e) {}   // 없앤 '내 이름' 기능의 저장값 정리
 
         function summary() {
             if (before) return `근무표는 <b>${mdw(first)}</b>부터 시작합니다. 첫 주를 보여드려요.`;
@@ -257,11 +239,6 @@
             const working = people.filter(p => { const v = valOf(p, TODAY); return v && v !== '휴'; }).length;
             let html = `오늘 <b>${mdw(TODAY)}</b> · 근무 ${working}명`;
             if (offs.length) html += `<br><span class="lbl off">휴무</span>${offs.join(', ')}`;
-            if (me) {
-                const p = people.find(x => x.name === me);
-                const fmt = v => (v == null ? '—' : v === '휴' ? '휴무' : esc(v));
-                html += `<br><span class="lbl mine">내 근무</span>${esc(me)} · 오늘 <b>${fmt(valOf(p, TODAY))}</b> · 내일 <b>${fmt(valOf(p, tomorrow))}</b>`;
-            }
             return html;
         }
 
@@ -289,12 +266,9 @@
                         if (d === TODAY) cls.push('today');
                         return `<td class="${cls.join(' ')}">${v == null ? '' : esc(v)}</td>`;
                     }).join('');
-                    body += `<tr class="${p.name === me ? 'row-me' : ''}"><td class="name"><b>${esc(p.name)}</b><small>${esc(roleAt(p, days[3]))}</small></td>${cells}${showCnt ? `<td class="cnt">${work}</td>` : ''}</tr>`;
+                    body += `<tr><td class="name"><b>${esc(p.name)}</b><small>${esc(roleAt(p, days[3]))}</small></td>${cells}${showCnt ? `<td class="cnt">${work}</td>` : ''}</tr>`;
                 });
             });
-            const opts = ['<option value="">선택 안 함</option>']
-                .concat(people.map(p => `<option value="${esc(p.name)}"${p.name === me ? ' selected' : ''}>${esc(p.name)} (${esc(p.role)})</option>`))
-                .join('');
 
             root.innerHTML = `
             <div class="night">
@@ -303,7 +277,6 @@
                     <span class="wk">${md(days[0])} ~ ${md(days[6])}</span>
                     <button type="button" class="nav" id="nNext" aria-label="다음 주"${wi === weeks.length - 1 ? ' disabled' : ''}>▶</button>
                     ${wi !== homeWeek ? '<button type="button" class="todaybtn" id="nToday">이번 주</button>' : ''}
-                    <label class="me-pick">내 이름 <select id="nMe">${opts}</select></label>
                 </div>
                 <div class="summary">${summary()}</div>
                 <div class="tbl-wrap">
@@ -324,7 +297,6 @@
             document.getElementById('nNext').onclick = () => { if (wi < weeks.length - 1) { wi++; render(); } };
             const tb = document.getElementById('nToday');
             if (tb) tb.onclick = () => { wi = homeWeek; render(); };
-            document.getElementById('nMe').onchange = e => { me = e.target.value; store.set('night.me', me); render(); };
         }
         render();
     }
