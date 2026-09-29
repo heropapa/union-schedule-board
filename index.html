@@ -55,14 +55,12 @@
     table.nt { width: 100%; min-width: 330px; table-layout: fixed; border-collapse: collapse; font-size: 12.5px; }
     .nt th, .nt td { padding: 7px 3px; text-align: center; white-space: nowrap; overflow: hidden; border-bottom: 1px solid #eef0f3; }
     .nt thead th.name { width: 76px; }
-    .nt thead th.cnt-h { width: 44px; }
     .nt thead th { font-size: 12px; font-weight: 600; color: #666; background: #fafbfc; }
     .nt thead th .d { display: block; font-size: 14px; font-weight: 700; color: #222; }
     .nt thead th .w { display: block; font-size: 11px; font-weight: 500; }
     .nt thead tr.pdd th .d { font-size: 11.5px; font-weight: 600; color: #666; }
     .nt thead tr.pdd th .w { font-size: 10px; }
     .nt thead tr.ip th { padding-bottom: 2px; border-bottom: 0; }
-    .nt thead tr.ip th.cnt-h { border-bottom: 1px solid #eef0f3; }   /* 두 줄 걸친 '근무' 칸 */
     .nt thead tr.pdd th { padding-top: 1px; font-size: 11px; font-weight: 500; color: #888; }
     .nt thead th.today { color: #fff; background: #1976d2; }
     .nt thead th.today .d { color: #fff; }
@@ -74,7 +72,6 @@
     .nt td.off { font-weight: 700; color: #9c0006; background: #ffe3e6; }
     .nt td.sub { font-weight: 700; color: #1f3864; background: #e3ecf7; }
     .nt td.today { box-shadow: inset 2px 0 0 #1976d2, inset -2px 0 0 #1976d2; }
-    .nt .cnt { font-size: 11.5px; color: #777; }
     .nt td .rot { display: block; margin-top: 1px; font-size: 10px; font-weight: 600; opacity: .75; }   /* 일부 회전만(D1 등) */
     .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 2px 4px; font-size: 12px; color: #666; }
     .chip { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; border-radius: 3px; }
@@ -259,10 +256,6 @@
             return html;
         }
 
-        const wideEnough = () => window.innerWidth >= 600;   // 폰에선 '근무' 칸 생략
-        let showCnt = wideEnough();
-        window.addEventListener('resize', () => { if (wideEnough() !== showCnt) { showCnt = wideEnough(); render(); } });
-
         function render() {
             const days = weeks[wi].filter(d => first <= d && d <= last);   // 범위 밖(공개 전) 날짜는 칸째 숨김
             const tcls = d => (d === TONIGHT ? ' class="today"' : '');
@@ -270,20 +263,18 @@
             const headPdd = days.map(d => `<th${tcls(d)}>${dlab(d)}</th>`).join('');
             let body = '';
             D.teams.forEach(t => {
-                body += `<tr class="team"><td colspan="${days.length + (showCnt ? 2 : 1)}">${esc(t.name)}</td></tr>`;
+                body += `<tr class="team"><td colspan="${days.length + 1}">${esc(t.name)}</td></tr>`;
                 t.people.forEach(p => {
-                    let work = 0;
                     const cells = days.map(d => {
                         const v = valOf(p, d);
                         const cls = [];
                         if (v === '휴') cls.push('off');
                         else if (v && splitRot(v)[0] !== roleAt(p, d)) cls.push('sub');   // 본인 담당과 다르면 대체(파랑)
-                        if (v && v !== '휴') work++;
                         if (d === TONIGHT) cls.push('today');
                         const [rt, rot] = splitRot(v);
                         return `<td class="${cls.join(' ')}">${v == null ? '' : esc(rt) + (rot ? `<small class="rot">${esc(rot)}</small>` : '')}</td>`;
                     }).join('');
-                    body += `<tr><td class="name"><b>${esc(p.name)}</b><small>${esc(roleAt(p, days[Math.min(3, days.length - 1)]))}</small></td>${cells}${showCnt ? `<td class="cnt">${work}</td>` : ''}</tr>`;
+                    body += `<tr><td class="name"><b>${esc(p.name)}</b><small>${esc(roleAt(p, days[Math.min(3, days.length - 1)]))}</small></td>${cells}</tr>`;
                 });
             });
 
@@ -299,7 +290,7 @@
                 <div class="tbl-wrap">
                     <table class="nt">
                         <thead>
-                            <tr class="ip"><th class="name">입차</th>${headIp}${showCnt ? '<th class="cnt-h" rowspan="2">근무</th>' : ''}</tr>
+                            <tr class="ip"><th class="name">입차</th>${headIp}</tr>
                             <tr class="pdd"><th class="name">PDD</th>${headPdd}</tr>
                         </thead>
                         <tbody>${body}</tbody>
