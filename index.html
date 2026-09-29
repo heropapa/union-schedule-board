@@ -43,7 +43,9 @@
     .n-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
     .n-bar .nav { width: 38px; height: 36px; font-size: 15px; background: #fff; border: 1px solid #cfd4da; border-radius: 8px; cursor: pointer; }
     .n-bar .nav:disabled { opacity: .3; cursor: default; }
-    .wk { min-width: 120px; text-align: center; font-size: 15px; font-weight: 700; }
+    .wk { min-width: 120px; text-align: center; font-size: 15px; font-weight: 700; line-height: 1.25; }
+    .wk small { display: block; font-size: 11px; font-weight: 500; color: #888; }
+    .summary small.pdd { font-size: 12px; color: #888; }
     .todaybtn { height: 36px; padding: 0 12px; font-size: 13px; color: #1976d2; background: #fff; border: 1px solid #1976d2; border-radius: 8px; cursor: pointer; }
     .summary { margin-bottom: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.7; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; }
     .lbl { display: inline-block; margin-right: 5px; padding: 0 7px; font-size: 12px; font-weight: 700; border-radius: 10px; }
@@ -56,8 +58,12 @@
     .nt thead th.cnt-h { width: 44px; }
     .nt thead th { font-size: 12px; font-weight: 600; color: #666; background: #fafbfc; }
     .nt thead th .d { display: block; font-size: 14px; font-weight: 700; color: #222; }
+    .nt thead tr.ip th { padding-bottom: 2px; border-bottom: 0; }
+    .nt thead tr.ip th.cnt-h { border-bottom: 1px solid #eef0f3; }   /* 두 줄 걸친 '근무' 칸 */
+    .nt thead tr.pdd th { padding-top: 1px; font-size: 11px; font-weight: 500; color: #888; }
     .nt thead th.today { color: #fff; background: #1976d2; }
     .nt thead th.today .d { color: #fff; }
+    .nt thead tr.pdd th.today { color: rgba(255, 255, 255, .85); }
     .nt .name { position: sticky; left: 0; z-index: 1; padding-left: 9px; text-align: left; background: #fff; }
     .nt .name b { display: block; font-size: 13.5px; color: #222; }
     .nt .name small { font-size: 11px; color: #888; }
@@ -219,6 +225,11 @@
         const valOf = (p, d) => (d in idx ? p.days[idx[d]] : null);
         const roleAt = (p, d) => (p.roles && d in idx && p.roles[idx[d]]) || p.role;   // 달마다 담당이 바뀐 경우
         const splitRot = v => { const m = /^(.+)\((.+)\)$/.exec(v || ''); return m ? [m[1], m[2]] : [v, '']; };   // '708B(D1)' → ['708B','D1']
+        // 근무표 날짜 = PDD. 입차는 그 전날 저녁 (예: PDD 10/1 = 9/30 입차)
+        const shift = (s, n) => { const x = dateOf(s); x.setDate(x.getDate() + n); return isoOf(x); };
+        const ipOf = d => shift(d, -1);
+        const TONIGHT = shift(TODAY, 1);   // 오늘 저녁 입차하는 근무의 PDD
+        const dnum = s => { const x = dateOf(s); return x.getDate() === 1 ? md(s) : String(x.getDate()); };   // 1일은 '10/1'
 
         // 일요일 시작 주 단위
         const weeks = [];
@@ -229,17 +240,17 @@
             for (let k = 0; k < 7; k++) { const x = new Date(w); x.setDate(w.getDate() + k); days.push(isoOf(x)); }
             weeks.push(days);
         }
-        const before = TODAY < first, after = TODAY > last;
-        const homeWeek = before ? 0 : after ? weeks.length - 1 : weeks.findIndex(w => w.includes(TODAY));
+        const before = TONIGHT < first, after = TONIGHT > last;
+        const homeWeek = before ? 0 : after ? weeks.length - 1 : weeks.findIndex(w => w.includes(TONIGHT));
         let wi = homeWeek;
         try { localStorage.removeItem('night.me'); } catch (e) {}   // 없앤 '내 이름' 기능의 저장값 정리
 
         function summary() {
-            if (before) return `근무표는 <b>${mdw(first)}</b>부터 시작합니다. 첫 주를 보여드려요.`;
-            if (after) return `등록된 근무표는 <b>${mdw(last)}</b>까지입니다. 새 근무표가 올라오면 바뀝니다.`;
-            const offs = people.filter(p => valOf(p, TODAY) === '휴').map(p => esc(p.name));
-            const working = people.filter(p => { const v = valOf(p, TODAY); return v && v !== '휴'; }).length;
-            let html = `오늘 <b>${mdw(TODAY)}</b> · 근무 ${working}명`;
+            if (before) return `근무표는 <b>${mdw(ipOf(first))} 입차</b>부터 시작합니다. 첫 주를 보여드려요.`;
+            if (after) return `등록된 근무표는 <b>${mdw(ipOf(last))} 입차</b>까지입니다. 새 근무표가 올라오면 바뀝니다.`;
+            const offs = people.filter(p => valOf(p, TONIGHT) === '휴').map(p => esc(p.name));
+            const working = people.filter(p => { const v = valOf(p, TONIGHT); return v && v !== '휴'; }).length;
+            let html = `오늘 입차 <b>${mdw(TODAY)}</b> <small class="pdd">PDD ${md(TONIGHT)}</small> · 근무 ${working}명`;
             if (offs.length) html += `<br><span class="lbl off">휴무</span>${offs.join(', ')}`;
             return html;
         }
@@ -250,10 +261,9 @@
 
         function render() {
             const days = weeks[wi];
-            const head = days.map(d => {
-                const dt = dateOf(d);
-                return `<th class="${d === TODAY ? 'today' : ''}">${WD[dt.getDay()]}<span class="d">${dt.getDate()}</span></th>`;
-            }).join('');
+            const tcls = d => (d === TONIGHT ? ' class="today"' : '');
+            const headIp = days.map(d => `<th${tcls(d)}>${WD[dateOf(ipOf(d)).getDay()]}<span class="d">${dnum(ipOf(d))}</span></th>`).join('');
+            const headPdd = days.map(d => `<th${tcls(d)}>${dnum(d)}</th>`).join('');
             let body = '';
             D.teams.forEach(t => {
                 body += `<tr class="team"><td colspan="${showCnt ? 9 : 8}">${esc(t.name)}</td></tr>`;
@@ -265,7 +275,7 @@
                         if (v === '휴') cls.push('off');
                         else if (v && splitRot(v)[0] !== roleAt(p, d)) cls.push('sub');   // 본인 담당과 다르면 대체(파랑)
                         if (v && v !== '휴') work++;
-                        if (d === TODAY) cls.push('today');
+                        if (d === TONIGHT) cls.push('today');
                         const [rt, rot] = splitRot(v);
                         return `<td class="${cls.join(' ')}">${v == null ? '' : esc(rt) + (rot ? `<small class="rot">${esc(rot)}</small>` : '')}</td>`;
                     }).join('');
@@ -277,23 +287,26 @@
             <div class="night">
                 <div class="n-bar">
                     <button type="button" class="nav" id="nPrev" aria-label="이전 주"${wi === 0 ? ' disabled' : ''}>◀</button>
-                    <span class="wk">${md(days[0])} ~ ${md(days[6])}</span>
+                    <span class="wk">입차 ${md(ipOf(days[0]))} ~ ${md(ipOf(days[6]))}<small>PDD ${md(days[0])} ~ ${md(days[6])}</small></span>
                     <button type="button" class="nav" id="nNext" aria-label="다음 주"${wi === weeks.length - 1 ? ' disabled' : ''}>▶</button>
                     ${wi !== homeWeek ? '<button type="button" class="todaybtn" id="nToday">이번 주</button>' : ''}
                 </div>
                 <div class="summary">${summary()}</div>
                 <div class="tbl-wrap">
                     <table class="nt">
-                        <thead><tr><th class="name">이름</th>${head}${showCnt ? '<th class="cnt-h">근무</th>' : ''}</tr></thead>
+                        <thead>
+                            <tr class="ip"><th class="name">입차</th>${headIp}${showCnt ? '<th class="cnt-h" rowspan="2">근무</th>' : ''}</tr>
+                            <tr class="pdd"><th class="name">PDD</th>${headPdd}</tr>
+                        </thead>
                         <tbody>${body}</tbody>
                     </table>
                 </div>
                 <div class="legend">
                     <span><i class="chip" style="background:#ffe3e6;border:1px solid #f5a3ad"></i>휴무</span>
                     <span><i class="chip" style="background:#e3ecf7;border:1px solid #9fb7da"></i>백업·대체 노선</span>
-                    <span><i class="chip" style="background:#fff;border:2px solid #1976d2"></i>오늘</span>
+                    <span><i class="chip" style="background:#fff;border:2px solid #1976d2"></i>오늘 입차</span>
                 </div>
-                <div class="foot">${esc(D.title)} · ${md(first)} ~ ${md(last)}${D.note ? '<br>' + esc(D.note) : ''}</div>
+                <div class="foot">${esc(D.title)} · 입차 ${md(ipOf(first))} ~ ${md(ipOf(last))} (PDD ${md(first)} ~ ${md(last)})${D.note ? '<br>' + esc(D.note) : ''}</div>
             </div>`;
 
             document.getElementById('nPrev').onclick = () => { if (wi > 0) { wi--; render(); } };
