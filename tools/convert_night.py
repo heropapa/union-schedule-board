@@ -2,7 +2,10 @@
 """야간 근무표(월별 xlsx) → night-data.js 변환 + 검증
 
 사용법:
-  python tools/convert_night.py <월별.xlsx> [<월별2.xlsx> ...] [<어드민양식.zip 또는 폴더>] [--force]
+  python tools/convert_night.py <월별.xlsx> [<월별2.xlsx> ...] [<어드민 zip·폴더·xlsx> ...] [--force]
+  - 어드민 양식(쿠팡 내보내기 schedule-v2 포함)은 머리행으로 자동 구분. 월별과 겹치는 날은 대조,
+    월별에 없는 날(예: 월별 시작 전 주)은 어드민으로 채움. 한 사람이 캠프별 여러 줄이면 '출근' 줄이 실제 근무,
+    일부 회전만(D1 등)이면 708B(D1) 로 표시.
 
   예) python tools/convert_night.py 야간근무표_월별_2026.10~2027.01.xlsx 야간근무표_어드민양식_15주_주별.zip
 
@@ -33,15 +36,18 @@
 
 필요: pip install openpyxl
 """
-import sys, os, re, io, json, zipfile, datetime
+import sys, os, re, io, json, zipfile, datetime, warnings
 import openpyxl
+
+warnings.filterwarnings('ignore', message='Workbook contains no default style')
 
 sys.stdout.reconfigure(encoding='utf-8')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.environ.get('NIGHT_OUT') or os.path.join(ROOT, 'night-data.js')
 WD = '월화수목금토일'                        # date.weekday(): 월=0
 OFF_ALIASES = {'휴무', '휴일', '연차', 'OFF', '오프'}
-ROUTE_RE = re.compile(r'\d{3}[A-Z]+')
+ROUTE_RE = re.compile(r'\d{3}[A-Z]+(\([A-Z0-9,]+\))?')   # 708B 또는 708B(D1) (일부 회전만)
+FULL_ROT = 'D1,D2,F3'
 
 
 def fail(msg, details=()):
@@ -123,7 +129,7 @@ def read_sheet(ws, y, mo):
     return title, note, groups
 
 
-def parse_monthly(paths):
+def parse_monthly(paths, admin_cells=None):
     sheets = []                               # (y, mo, 파일, 시트)
     for path in paths:
         wb = openpyxl.load_workbook(path, data_only=True)
@@ -160,6 +166,19 @@ def parse_monthly(paths):
                         fail(f'같은 날 값이 파일/시트마다 다름: {name} {d} {cells[(name, d)]} vs {v} ({fname} {ws.title})')
                     cells[(name, d)] = v
                     roles[(name, d)] = role
+
+    monthly_dates = {d for _, d in cells}
+    filled = []
+    for (name, d), v in sorted((admin_cells or {}).items(), key=lambda kv: kv[0][1]):
+        if d in monthly_dates:
+            continue                          # 겹치는 날은 main 에서 대조
+        if name not in team_of:
+            fail(f"어드민에만 있는 사람 '{name}' ({d}) — 월별 근무표 명단에 없음")
+        cells[(name, d)] = v
+        filled.append(d)
+    if filled:
+        fd = sorted(set(filled))
+        notes.append(f'월별에 없는 {len(fd)}일({fd[0]} ~ {fd[-1]})은 어드민 파일로 채움')
 
     dates = sorted({d for _, d in cells})
     if not dates:
@@ -207,7 +226,7 @@ def parse_monthly(paths):
                 if v is None:
                     errs.append(f'빈칸: {nm} {dates[i]}')
                 elif v != '휴' and not ROUTE_RE.fullmatch(v):
-                    errs.append(f"형식 오류: {nm} {dates[i]} '{v}' ('휴' 또는 708A 같은 라우트)")
+                    errs.append(f"형식 오류: {nm} {dates[i]} '{v}' ('휴' 또는 708A / 708B(D1) 같은 라우트)")
             if idx[0] > 0 or idx[-1] < len(dates) - 1:
                 notes.append(f'{nm}: {dates[idx[0]]} ~ {dates[idx[-1]]} 만 근무표에 있음 (입사/퇴사?)')
             used = [r for r in rl if r is not None]
@@ -219,7 +238,7 @@ def parse_monthly(paths):
         fail(f'월별 검증 실패 {len(errs)}건', errs)
     for t in teams:                           # 출력 키 순서 정리
         t['people'] = [{k: p[k] for k in ('name', 'role', 'roles', 'days') if k in p} for p in t['people']]
-    return title or '야간 근무표', note or '', dates, teams, notes
+    return title or '야간 근무표', note or '', dates, teams, notes, monthly_dates
 
 
 def expand(code):
@@ -228,10 +247,52 @@ def expand(code):
     return {m.group(1) + ch for ch in m.group(2)} if m else {code}
 
 
+def compress(routes, where):
+    """'709D,709A' → '709AD' (같은 3자리 번호끼리만)"""
+    parts = [x for x in routes.split(',') if x]
+    heads = {x[:3] for x in parts}
+    if not parts or len(heads) != 1 or not all(re.fullmatch(r'\d{3}[A-Z]', x) for x in parts):
+        fail(f"{where}: 업무라우트 '{routes}' 를 합칠 수 없음 (번호가 다르거나 형식 이상)")
+    return parts[0][:3] + ''.join(sorted(x[3] for x in parts))
+
+
+def is_admin_xlsx(path):
+    try:
+        ws = openpyxl.load_workbook(path, read_only=True).worksheets[0]
+        hdr = [c.value for c in next(ws.iter_rows(max_row=1))]
+        return '업무일' in hdr and '업무상태' in hdr
+    except Exception:
+        return False
+
+
+def collapse(rows):
+    """어드민 행 → {(이름, 날짜): '휴' | '708B' | '708B(D1)'}
+    한 사람이 캠프별로 여러 줄(예: 부산2 휴무 + 부산3 출근)이면 출근 줄이 실제 근무."""
+    grp = {}
+    for d, name, st, routes, rot in rows:
+        grp.setdefault((name, d), []).append((st, routes, rot))
+    out, errs = {}, []
+    for (name, d), xs in grp.items():
+        work = {(r, t) for st, r, t in xs if st == '출근'}
+        if not work:
+            out[(name, d)] = '휴'
+        elif len(work) > 1:
+            errs.append(f'{d} {name}: 출근 줄이 서로 다르게 {len(work)}개 {sorted(work)}')
+        else:
+            r, t = work.pop()
+            v = compress(r, f'{d} {name}')
+            out[(name, d)] = v if t in ('', FULL_ROT) else f'{v}({t})'
+    if errs:
+        fail('어드민 파일에서 한 사람의 출근이 겹침', errs)
+    return out
+
+
 def load_admin(src):
     skip = lambda n: '__MACOSX' in n or os.path.basename(n).startswith(('._', '~$'))
     files = []
-    if src.lower().endswith('.zip'):
+    if src.lower().endswith('.xlsx'):
+        files = [src]
+    elif src.lower().endswith('.zip'):
         z = zipfile.ZipFile(src)
         for i in z.infolist():
             if i.filename.lower().endswith('.xlsx') and not skip(i.filename):
@@ -254,29 +315,29 @@ def load_admin(src):
                 continue
             d = r[ix['업무일']]
             d = d.date().isoformat() if hasattr(d, 'date') else str(d)[:10]
+            rot = re.sub(r'\s+', '', str(r[ix['회전']] or '')).upper() if '회전' in ix else ''
             rows.append((d, str(r[ix['이름']]).strip(), str(r[ix['업무상태']]).strip(),
-                         re.sub(r'\s+', '', str(r[ix['업무라우트']] or '')).upper()))
+                         re.sub(r'\s+', '', str(r[ix['업무라우트']] or '')).upper(), rot))
     return rows
 
 
-def cross_check(dates, teams, admin_rows):
+def cross_check(dates, teams, acells, monthly_dates):
+    """월별과 어드민이 둘 다 있는 날만 한 칸씩 대조"""
     grid = {(p['name'], d): v for t in teams for p in t['people'] for d, v in zip(dates, p['days'])}
-    bad, seen = [], set()
-    for d, name, st, routes in admin_rows:
-        seen.add((name, d))
+    over = sorted({d for _, d in acells} & set(monthly_dates))
+    bad = []
+    for (name, d), a in sorted(acells.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+        if d not in monthly_dates:
+            continue
         v = grid.get((name, d))
         if v is None:
-            bad.append(f'{d} {name}: 월별에 없음 (어드민 {st} {routes})')
-        elif st == '휴무':
-            if v != '휴':
-                bad.append(f'{d} {name}: 어드민 휴무 vs 월별 {v}')
-        elif v == '휴' or expand(v) != {x for x in routes.split(',') if x}:
-            bad.append(f'{d} {name}: 어드민 {st} {routes} vs 월별 {v}')
-    adates = sorted({d for d, *_ in admin_rows})
+            bad.append(f'{d} {name}: 월별에 없음 (어드민 {a})')
+        elif v != a:
+            bad.append(f'{d} {name}: 어드민 {a} vs 월별 {v}')
     for (name, d), v in grid.items():
-        if v is not None and d in adates and (name, d) not in seen:
+        if v is not None and d in over and (name, d) not in acells:
             bad.append(f'{d} {name}: 어드민에 없음 (월별 {v})')
-    return adates, bad
+    return over, bad
 
 
 def load_existing():
@@ -292,24 +353,34 @@ def load_existing():
 def main():
     args = [a for a in sys.argv[1:] if a != '--force']
     force = '--force' in sys.argv[1:]
-    monthly = [a for a in args if a.lower().endswith('.xlsx')]
-    admin = [a for a in args if a.lower().endswith('.zip') or os.path.isdir(a)]
+    admin = [a for a in args if a.lower().endswith('.zip') or os.path.isdir(a)
+             or (a.lower().endswith('.xlsx') and is_admin_xlsx(a))]
+    monthly = [a for a in args if a.lower().endswith('.xlsx') and a not in admin]
     other = [a for a in args if a not in monthly and a not in admin]
-    if not monthly or other or len(admin) > 1:
+    if not monthly or other:
         raise SystemExit(__doc__ + (f'\n알 수 없는 인자: {other}' if other else ''))
 
-    title, note, dates, teams, notes = parse_monthly(monthly)
+    acells = {}
+    for src in admin:                         # 여러 어드민 입력은 합침(같은 칸이 다르면 중단)
+        for k, v in collapse(load_admin(src)).items():
+            if k in acells and acells[k] != v:
+                fail(f'어드민 파일끼리 다름: {k[0]} {k[1]} {acells[k]} vs {v}')
+            acells[k] = v
+
+    title, note, dates, teams, notes, monthly_dates = parse_monthly(monthly, acells)
     n_people = sum(len(t['people']) for t in teams)
     print(f'[월별] {title} | {dates[0]} ~ {dates[-1]} ({len(dates)}일) | {len(teams)}개 조 {n_people}명')
     for n in notes:
         print('   (참고)', n)
 
     if admin:
-        adates, bad = cross_check(dates, teams, load_admin(admin[0]))
-        print(f'[어드민 대조] {adates[0]} ~ {adates[-1]} ({len(adates)}일) → 불일치 {len(bad)}건')
+        over, bad = cross_check(dates, teams, acells, monthly_dates)
+        if over:
+            print(f'[어드민 대조] 월별과 겹치는 {over[0]} ~ {over[-1]} ({len(over)}일) → 불일치 {len(bad)}건')
         if bad:
             fail('월별과 어드민이 다름', bad)
-        uncovered = [d for d in dates if d not in set(adates)]
+        adates = {d for _, d in acells}
+        uncovered = [d for d in dates if d not in adates]
         if uncovered:
             print(f'   (참고) 어드민에 없는 {len(uncovered)}일({uncovered[0]} ~ {uncovered[-1]} 등)은 월별 규칙 검사만 거침')
     else:
