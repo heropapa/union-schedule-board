@@ -58,12 +58,15 @@
     .nt thead th.cnt-h { width: 44px; }
     .nt thead th { font-size: 12px; font-weight: 600; color: #666; background: #fafbfc; }
     .nt thead th .d { display: block; font-size: 14px; font-weight: 700; color: #222; }
+    .nt thead th .w { display: block; font-size: 11px; font-weight: 500; }
+    .nt thead tr.pdd th .d { font-size: 11.5px; font-weight: 600; color: #666; }
+    .nt thead tr.pdd th .w { font-size: 10px; }
     .nt thead tr.ip th { padding-bottom: 2px; border-bottom: 0; }
     .nt thead tr.ip th.cnt-h { border-bottom: 1px solid #eef0f3; }   /* 두 줄 걸친 '근무' 칸 */
     .nt thead tr.pdd th { padding-top: 1px; font-size: 11px; font-weight: 500; color: #888; }
     .nt thead th.today { color: #fff; background: #1976d2; }
     .nt thead th.today .d { color: #fff; }
-    .nt thead tr.pdd th.today { color: rgba(255, 255, 255, .85); }
+    .nt thead tr.pdd th.today, .nt thead tr.pdd th.today .d { color: rgba(255, 255, 255, .9); }
     .nt .name { position: sticky; left: 0; z-index: 1; padding-left: 9px; text-align: left; background: #fff; }
     .nt .name b { display: block; font-size: 13.5px; color: #222; }
     .nt .name small { font-size: 11px; color: #888; }
@@ -229,7 +232,8 @@
         const shift = (s, n) => { const x = dateOf(s); x.setDate(x.getDate() + n); return isoOf(x); };
         const ipOf = d => shift(d, -1);
         const TONIGHT = shift(TODAY, 1);   // 오늘 저녁 입차하는 근무의 PDD
-        const dnum = s => { const x = dateOf(s); return x.getDate() === 1 ? md(s) : String(x.getDate()); };   // 1일은 '10/1'
+        // 머리글 한 칸: '31일' + '(토)', 달이 바뀌는 1일은 '11/1' + '(일)'
+        const dlab = s => { const x = dateOf(s); return `<span class="d">${x.getDate() === 1 ? md(s) : x.getDate() + '일'}</span><span class="w">(${WD[x.getDay()]})</span>`; };
 
         // 일요일 시작 주 단위
         const weeks = [];
@@ -250,7 +254,7 @@
             if (after) return `등록된 근무표는 <b>${mdw(ipOf(last))} 입차</b>까지입니다. 새 근무표가 올라오면 바뀝니다.`;
             const offs = people.filter(p => valOf(p, TONIGHT) === '휴').map(p => esc(p.name));
             const working = people.filter(p => { const v = valOf(p, TONIGHT); return v && v !== '휴'; }).length;
-            let html = `오늘 입차 <b>${mdw(TODAY)}</b> <small class="pdd">PDD ${md(TONIGHT)}</small> · 근무 ${working}명`;
+            let html = `오늘 입차 <b>${mdw(TODAY)}</b> <small class="pdd">PDD ${mdw(TONIGHT)}</small> · 근무 ${working}명`;
             if (offs.length) html += `<br><span class="lbl off">휴무</span>${offs.join(', ')}`;
             return html;
         }
@@ -260,13 +264,13 @@
         window.addEventListener('resize', () => { if (wideEnough() !== showCnt) { showCnt = wideEnough(); render(); } });
 
         function render() {
-            const days = weeks[wi];
+            const days = weeks[wi].filter(d => first <= d && d <= last);   // 범위 밖(공개 전) 날짜는 칸째 숨김
             const tcls = d => (d === TONIGHT ? ' class="today"' : '');
-            const headIp = days.map(d => `<th${tcls(d)}>${WD[dateOf(ipOf(d)).getDay()]}<span class="d">${dnum(ipOf(d))}</span></th>`).join('');
-            const headPdd = days.map(d => `<th${tcls(d)}>${dnum(d)}</th>`).join('');
+            const headIp = days.map(d => `<th${tcls(d)}>${dlab(ipOf(d))}</th>`).join('');
+            const headPdd = days.map(d => `<th${tcls(d)}>${dlab(d)}</th>`).join('');
             let body = '';
             D.teams.forEach(t => {
-                body += `<tr class="team"><td colspan="${showCnt ? 9 : 8}">${esc(t.name)}</td></tr>`;
+                body += `<tr class="team"><td colspan="${days.length + (showCnt ? 2 : 1)}">${esc(t.name)}</td></tr>`;
                 t.people.forEach(p => {
                     let work = 0;
                     const cells = days.map(d => {
@@ -279,7 +283,7 @@
                         const [rt, rot] = splitRot(v);
                         return `<td class="${cls.join(' ')}">${v == null ? '' : esc(rt) + (rot ? `<small class="rot">${esc(rot)}</small>` : '')}</td>`;
                     }).join('');
-                    body += `<tr><td class="name"><b>${esc(p.name)}</b><small>${esc(roleAt(p, days[3]))}</small></td>${cells}${showCnt ? `<td class="cnt">${work}</td>` : ''}</tr>`;
+                    body += `<tr><td class="name"><b>${esc(p.name)}</b><small>${esc(roleAt(p, days[Math.min(3, days.length - 1)]))}</small></td>${cells}${showCnt ? `<td class="cnt">${work}</td>` : ''}</tr>`;
                 });
             });
 
@@ -287,7 +291,7 @@
             <div class="night">
                 <div class="n-bar">
                     <button type="button" class="nav" id="nPrev" aria-label="이전 주"${wi === 0 ? ' disabled' : ''}>◀</button>
-                    <span class="wk">입차 ${md(ipOf(days[0]))} ~ ${md(ipOf(days[6]))}<small>PDD ${md(days[0])} ~ ${md(days[6])}</small></span>
+                    <span class="wk">입차 ${md(ipOf(days[0]))} ~ ${md(ipOf(days[days.length - 1]))}<small>PDD ${md(days[0])} ~ ${md(days[days.length - 1])}</small></span>
                     <button type="button" class="nav" id="nNext" aria-label="다음 주"${wi === weeks.length - 1 ? ' disabled' : ''}>▶</button>
                     ${wi !== homeWeek ? '<button type="button" class="todaybtn" id="nToday">이번 주</button>' : ''}
                 </div>
@@ -306,7 +310,7 @@
                     <span><i class="chip" style="background:#e3ecf7;border:1px solid #9fb7da"></i>백업·대체 노선</span>
                     <span><i class="chip" style="background:#fff;border:2px solid #1976d2"></i>오늘 입차</span>
                 </div>
-                <div class="foot">${esc(D.title)} · 입차 ${md(ipOf(first))} ~ ${md(ipOf(last))} (PDD ${md(first)} ~ ${md(last)})${D.note ? '<br>' + esc(D.note) : ''}</div>
+                <div class="foot">${esc(D.title)} · 입차 ${md(ipOf(first))} ~ ${md(ipOf(last))} (PDD ${md(first)} ~ ${md(last)})${D.until ? ' · 이후 근무는 확정되면 올립니다' : ''}${D.note ? '<br>' + esc(D.note) : ''}</div>
             </div>`;
 
             document.getElementById('nPrev').onclick = () => { if (wi > 0) { wi--; render(); } };

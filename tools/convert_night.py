@@ -2,7 +2,9 @@
 """야간 근무표(월별 xlsx) → night-data.js 변환 + 검증
 
 사용법:
-  python tools/convert_night.py <월별.xlsx> [<월별2.xlsx> ...] [<어드민 zip·폴더·xlsx> ...] [--force]
+  python tools/convert_night.py <월별.xlsx> [<월별2.xlsx> ...] [<어드민 zip·폴더·xlsx> ...] [--until YYYY-MM-DD] [--force]
+  - --until: 그 날짜(PDD = 어드민 업무일)까지만 게시판에 올림. 뒤쪽은 아직 바뀔 수 있어 안 올릴 때.
+    대조·검사는 입력 전체로 한 뒤 자름. 담당·명단은 남는 기간 기준으로 다시 계산.
   - 어드민 양식(쿠팡 내보내기 schedule-v2 포함)은 머리행으로 자동 구분. 월별과 겹치는 날은 대조,
     월별에 없는 날(예: 월별 시작 전 주)은 어드민으로 채움. 한 사람이 캠프별 여러 줄이면 '출근' 줄이 실제 근무,
     일부 회전만(D1 등)이면 708B(D1) 로 표시.
@@ -16,6 +18,8 @@
   2. 어드민 양식 zip(또는 폴더)이 있으면 같이 넣는다 → 한 칸이라도 다르면 중단.
   3. 성공하면 night-data.js 가 갱신된다. 기존 파일과 비교해 '오늘이 빠짐'·'앞으로의 날짜가 줄어듦'이면
      중단한다(정말 의도한 것이면 --force).
+     지금 게시판이 --until 로 잘려 있으면(night-data.js 에 until) 다시 돌릴 때도 --until 을 줘야 한다
+     (빠뜨리면 중단 — 자른 게 조용히 풀리지 않게).
   4. 배포:  git add night-data.js && git commit -m "야간 근무표 갱신" && git push
      → Netlify 자동 배포 (1분 내).  확인: https://gleaming-mermaid-cc23e0.netlify.app/?g=night
 
@@ -129,6 +133,27 @@ def read_sheet(ws, y, mo):
     return title, note, groups
 
 
+def group_teams(snaps):
+    """조/인원 순서: 최신 달 구성 기준, 이전 달에만 있는 사람(퇴사 등)은 그 조 끝에 덧붙임.
+    snaps = 시트 순서대로 [(조, [이름...])]. → (조 목록, 인원 없어 뺀 조 이름들)"""
+    team_of = {}
+    for snap in snaps:
+        for g, names in snap:
+            for nm in names:
+                team_of[nm] = g
+    teams = []
+    for snap in reversed(snaps):
+        for g, names in snap:
+            t = next((x for x in teams if x['name'] == g), None)
+            if t is None:
+                t = {'name': g, 'people': []}
+                teams.append(t)
+            for nm in names:
+                if team_of[nm] == g and not any(p['name'] == nm for p in t['people']):
+                    t['people'].append({'name': nm})
+    return [t for t in teams if t['people']], [t['name'] for t in teams if not t['people']]
+
+
 def parse_monthly(paths, admin_cells=None):
     sheets = []                               # (y, mo, 파일, 시트)
     for path in paths:
@@ -150,7 +175,8 @@ def parse_monthly(paths, admin_cells=None):
         t, n, groups = read_sheet(ws, y, mo)
         title = title or t
         note = note or n
-        order.append([(g, [p[0] for p in ps]) for g, ps in groups])
+        first = min((d for _, ps in groups for _, _, vals in ps for d in vals), default=f'{y:04d}-{mo:02d}-01')
+        order.append((first, [(g, [p[0] for p in ps]) for g, ps in groups]))   # (시트 첫날, 조 구성)
         for g, ps in groups:
             for name, role, vals in ps:
                 if name in team_of and team_of[name] != g:
@@ -189,24 +215,9 @@ def parse_monthly(paths, admin_cells=None):
         if exp != d:
             fail(f'날짜 누락: {exp} 부터 비어 있음 (중간 달 시트가 빠졌는지 확인)')
 
-    # 조/인원 순서: 최신 달 구성 기준, 이전 달에만 있는 사람(퇴사 등)은 그 조 끝에 덧붙임
-    teams = []
-    for snap in reversed(order):
-        for g, names in snap:
-            t = next((x for x in teams if x['name'] == g), None)
-            if t is None:
-                t = {'name': g, 'people': []}
-                teams.append(t)
-            for nm in names:
-                if team_of[nm] == g and not any(p['name'] == nm for p in t['people']):
-                    t['people'].append({'name': nm})
-    kept = []
-    for t in teams:
-        if t['people']:
-            kept.append(t)
-        else:
-            notes.append(f"인원 없는 조 '{t['name']}' 제외 (이전 달에 쓰던 조 이름?)")
-    teams = kept
+    teams, empty = group_teams([snap for _, snap in order])
+    for g in empty:
+        notes.append(f"인원 없는 조 '{g}' 제외 (이전 달에 쓰던 조 이름?)")
     listed = {p['name'] for t in teams for p in t['people']}
     if listed != set(team_of):
         fail('조 배치 오류', sorted(set(team_of) - listed))
@@ -238,7 +249,7 @@ def parse_monthly(paths, admin_cells=None):
         fail(f'월별 검증 실패 {len(errs)}건', errs)
     for t in teams:                           # 출력 키 순서 정리
         t['people'] = [{k: p[k] for k in ('name', 'role', 'roles', 'days') if k in p} for p in t['people']]
-    return title or '야간 근무표', note or '', dates, teams, notes, monthly_dates
+    return title or '야간 근무표', note or '', dates, teams, notes, monthly_dates, order
 
 
 def expand(code):
@@ -340,6 +351,49 @@ def cross_check(dates, teams, acells, monthly_dates):
     return over, bad
 
 
+def trim_until(dates, teams, until, layouts):
+    """PDD until 까지만 남김. 조 이름·배치·순서는 남는 기간의 시트(첫날 <= until) 기준으로 다시 묶고,
+    남는 기간에 근무가 없는 사람·조는 빼고, 담당은 남는 기간의 마지막 담당으로 (자른 뒤 달의 구성이 새지 않게)."""
+    n = sum(1 for d in dates if d <= until)          # dates 는 정렬돼 있어 앞에서 n개
+    if n == 0:
+        fail(f'--until {until}: 남는 날짜가 없음 (근무표 시작 {dates[0]})')
+    info = {p['name']: (t['name'], p) for t in teams for p in t['people']}
+    snaps = [snap for first, snap in layouts if first <= until] or [layouts[0][1]]
+    grouped, _ = group_teams(snaps)
+    placed = {x['name'] for t in grouped for x in t['people']}
+    for nm, (g, _) in info.items():                  # 남는 기간 시트에 없는 사람(보통 근무도 없어 곧 빠짐) → 원래 조 끝에
+        if nm not in placed:
+            t = next((x for x in grouped if x['name'] == g), None)
+            if t is None:
+                t = {'name': g, 'people': []}
+                grouped.append(t)
+            t['people'].append({'name': nm})
+    out_teams, dropped = [], []
+    for t in grouped:
+        ppl = []
+        for x in t['people']:
+            p = info[x['name']][1]
+            days = p['days'][:n]
+            if all(v is None for v in days):
+                dropped.append(p['name'])
+                continue
+            q = {'name': p['name'], 'role': p['role']}
+            if 'roles' in p:
+                rl = p['roles'][:n]
+                used = [r for r in rl if r is not None]
+                if used:
+                    q['role'] = used[-1]
+                    if len(set(used)) > 1:
+                        q['roles'] = rl
+                else:                                # 남는 날이 전부 어드민으로 채운 날 → 가장 이른 월별 담당
+                    q['role'] = next(r for r in p['roles'] if r is not None)
+            q['days'] = days
+            ppl.append(q)
+        if ppl:
+            out_teams.append({'name': t['name'], 'people': ppl})
+    return dates[:n], out_teams, dropped
+
+
 def load_existing():
     if not os.path.exists(OUT):
         return None
@@ -351,8 +405,22 @@ def load_existing():
 
 
 def main():
-    args = [a for a in sys.argv[1:] if a != '--force']
-    force = '--force' in sys.argv[1:]
+    args, force, until = [], False, None
+    it = iter(sys.argv[1:])
+    for a in it:
+        if a == '--force':
+            force = True
+        elif a == '--until':
+            until = next(it, '')
+        elif a.startswith('--until='):
+            until = a.split('=', 1)[1]
+        else:
+            args.append(a)
+    if until is not None:
+        try:
+            until = datetime.date.fromisoformat(until).isoformat()
+        except ValueError:
+            raise SystemExit(f"--until 날짜는 YYYY-MM-DD 형식 (받은 값: '{until}')")
     admin = [a for a in args if a.lower().endswith('.zip') or os.path.isdir(a)
              or (a.lower().endswith('.xlsx') and is_admin_xlsx(a))]
     monthly = [a for a in args if a.lower().endswith('.xlsx') and a not in admin]
@@ -367,7 +435,7 @@ def main():
                 fail(f'어드민 파일끼리 다름: {k[0]} {k[1]} {acells[k]} vs {v}')
             acells[k] = v
 
-    title, note, dates, teams, notes, monthly_dates = parse_monthly(monthly, acells)
+    title, note, dates, teams, notes, monthly_dates, layouts = parse_monthly(monthly, acells)
     n_people = sum(len(t['people']) for t in teams)
     print(f'[월별] {title} | {dates[0]} ~ {dates[-1]} ({len(dates)}일) | {len(teams)}개 조 {n_people}명')
     for n in notes:
@@ -386,6 +454,17 @@ def main():
     else:
         print('[어드민 대조] 생략 (zip을 같이 넣으면 한 칸씩 대조합니다)')
 
+    full_last, cut = dates[-1], False
+    if until:
+        if until < full_last:
+            k = sum(1 for d in dates if d > until)
+            dates, teams, dropped = trim_until(dates, teams, until, layouts)
+            cut = True
+            print(f'[공개 범위] PDD {until}까지만 게시 — 뒤 {k}일({dates[-1]} 다음날 ~ {full_last})은 안 올림'
+                  + (f' | 그 기간에 근무 없어 빠진 사람 {dropped}' if dropped else ''))
+        else:
+            print(f'[공개 범위] --until {until} 이 근무표 끝({full_last}) 이후라 자를 것 없음')
+
     old = load_existing()
     if old and old.get('dates'):
         today = os.environ.get('NIGHT_TODAY') or datetime.date.today().isoformat()   # NIGHT_TODAY: 테스트용
@@ -393,7 +472,11 @@ def main():
         stop = []
         if o0 <= today <= o1 and not (dates[0] <= today <= dates[-1]):
             stop.append(f'오늘({today})이 기존 근무표엔 있는데 새 근무표({dates[0]}~{dates[-1]})엔 없음 → 이번 주가 사라짐')
-        if dates[-1] < o1:
+        ou = old.get('until')
+        if ou and not until and dates[-1] > ou:
+            stop.append(f'지난번엔 PDD {ou}까지만 게시했는데 이번엔 {dates[-1]}까지 올라감 '
+                        f'→ 계속 자르려면 --until {ou}, 늘리려면 --until <새 날짜>, 끝까지 다 올리려면 --force')
+        if dates[-1] < o1 and not cut:                 # --until 로 일부러 자른 건 허용
             stop.append(f'끝나는 날이 앞당겨짐: {o1} → {dates[-1]} (앞으로의 근무표가 줄어듦)')
         og = {(p['name'], d): v for t in old['teams'] for p in t['people'] for d, v in zip(old['dates'], p['days'])}
         ng = {(p['name'], d): v for t in teams for p in t['people'] for d, v in zip(dates, p['days'])}
@@ -404,10 +487,12 @@ def main():
         for k in changed[:10]:
             print(f'   (변경) {k[0]} {k[1]}: {og[k]} → {ng[k]}')
         if stop and not force:
-            fail('기존 근무표보다 보여줄 기간이 줄어듦 (정말 의도했다면 --force)', stop)
+            fail('기존 게시판과 비교해 중단 (정말 의도했다면 --force)', stop)
 
     data = {'title': title, 'note': note, 'source': ', '.join(os.path.basename(m) for m in monthly),
             'generated': datetime.date.today().isoformat(), 'dates': dates, 'teams': teams}
+    if cut:
+        data['until'] = until                       # 게시판에 '이후는 확정되면 올림' 안내
     with io.open(OUT, 'w', encoding='utf-8', newline='\n') as f:
         f.write('// 자동 생성 파일 — 직접 수정하지 말고 tools/convert_night.py 로 다시 만드세요\n')
         f.write('window.NIGHT_DATA = ')
