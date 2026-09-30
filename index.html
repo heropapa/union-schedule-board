@@ -36,7 +36,7 @@
     .frames { flex: 1; min-height: 0; position: relative; }
     .frame { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; padding: 10px; overflow: auto; }
     .frame iframe { width: 100%; height: 100%; border: none; transform-origin: top left; }
-    /* 주간: [전체 스케쥴 | 휴무백업표] — 휴무백업표는 구글시트 내용을 불러와 4주를 한 화면에 */
+    /* 주간: [전체스케쥴(어드민) | 휴무백업표] — 휴무백업표는 구글시트 내용을 불러와 4주를 한 화면에 */
     .frame.native { padding: 0; }
     .dwrap { max-width: 760px; margin: 0 auto; padding: 12px; }
     /* 기간 + 보기 전환은 위에 고정 (스크롤해도 그대로) — 스크롤 영역(.frame) 기준 sticky */
@@ -358,7 +358,7 @@
     const dayData = [];   // 기간별 { weeks, at(불러온 시각), fail, view(그려진 보기) }
     let dayShown = -1;
     const DD = window.DAY_DATA && window.DAY_DATA.dates && window.DAY_DATA.dates.length ? window.DAY_DATA : null;   // 전체 스케쥴 (day-data.js)
-    const DAY_VIEWS = [DD && ['full', '전체 스케쥴'], ['table', '휴무백업표']].filter(Boolean);
+    const DAY_VIEWS = [DD && ['full', '전체스케쥴(어드민)'], ['table', '휴무백업표']].filter(Boolean);
     let dayView = store.get('day.view');
     if (!DAY_VIEWS.some(v => v[0] === dayView)) dayView = DD && DD.dates.includes(TODAY) ? 'full' : 'table';
     function loadDay(i) {
@@ -481,7 +481,7 @@
                     <button type="button" class="nav" data-go="1" aria-label="다음 주"${fullWi === fullWeeks.length - 1 ? ' disabled' : ''}>▶</button>
                     ${fullWi !== fullHome ? '<button type="button" class="todaybtn" data-go="home">이번 주</button>' : ''}
                 </div></div>
-                ${fullNoToday ? `<div class="fnote">이번 주(${md(thisSun)} ~ ${md(thisSat)}) 전체 스케쥴은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 휴무백업표를 봐 주세요.</div>` : ''}
+                ${fullNoToday ? `<div class="fnote">이번 주(${md(thisSun)} ~ ${md(thisSat)}) 전체스케쥴(어드민)은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 휴무백업표를 봐 주세요.</div>` : ''}
                 <div class="tbl-wrap" style="margin-top:10px">
                     <table class="nt ft">
                         <thead><tr><th class="name">이름</th>${days.map(d => `<th class="${tc(d).trim()}">${dlab(d)}</th>`).join('')}</tr></thead>
