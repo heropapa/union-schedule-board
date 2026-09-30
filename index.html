@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 유니온물류 구 스케쥴 게시판 | 자동배포: GitHub push → Netlify | https://gleaming-mermaid-cc23e0.netlify.app (야간: ?g=night) -->
+<!-- 유니온물류 구 스케쥴 게시판 | 자동배포: GitHub push → Netlify | https://gleaming-mermaid-cc23e0.netlify.app (야간: ?g=night, 링크 없으면 08~20시 주간·그 외 야간) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -650,7 +650,8 @@
         let q = null;
         try { q = (new URLSearchParams(location.search).get('g') || '').toLowerCase(); } catch (e) {}
         if (q && G_ALIAS[q]) return G_ALIAS[q];
-        return store.get('group') === 'night' ? 'night' : 'day';
+        const h = now.getHours();   // 들어올 때 시간 기준: 오전 8시 ~ 저녁 8시 전 주간, 그 외 야간 (사장님 요청)
+        return h >= 8 && h < 20 ? 'day' : 'night';
     }
     function setGroup(g, fromClick) {
         document.querySelectorAll('.seg button').forEach(b => {
@@ -660,8 +661,9 @@
         });
         document.getElementById('day').hidden = g !== 'day';
         document.getElementById('night').hidden = g !== 'night';
-        store.set('group', g);
-        if (fromClick) { try { history.replaceState(null, '', '?g=' + g); } catch (e) {} }
+        if (fromClick) {   // 탭을 눌러 바꾸면 주소의 ?g= 를 지움 → 새로고침·다음 날 다시 열 때도 시간 기준대로
+            try { const u = new URL(location.href); if (u.searchParams.has('g')) { u.searchParams.delete('g'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch (e) {}
+        }
         if (g === 'day') ensureDayTab();
         document.querySelector('main').scrollTop = 0;
     }
