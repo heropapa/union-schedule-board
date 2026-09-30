@@ -36,7 +36,7 @@
     .frames { flex: 1; min-height: 0; position: relative; }
     .frame { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; padding: 10px; overflow: auto; }
     .frame iframe { width: 100%; height: 100%; border: none; transform-origin: top left; }
-    /* 주간: 구글시트 내용을 불러와 4주(한 기간)를 한 화면에 — [달력 | 표] 두 가지 보기 */
+    /* 주간: [전체 스케쥴 | 휴무백업표] — 휴무백업표는 구글시트 내용을 불러와 4주를 한 화면에 */
     .frame.native { padding: 0; }
     .dwrap { max-width: 760px; margin: 0 auto; padding: 12px; }
     /* 기간 + 보기 전환은 위에 고정 (스크롤해도 그대로) — 스크롤 영역(.frame) 기준 sticky */
@@ -52,33 +52,15 @@
     .dsec { margin: 14px 2px 6px; font-size: 14px; font-weight: 700; color: #333; }
     .dsec small { margin-left: 6px; font-size: 11.5px; font-weight: 500; color: #888; }
     .dbox { overflow-x: auto; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; }
-    table.cal, table.bk4, table.dt { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; }
+    table.dt { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; }
     /* 이름은 가능한 한 안 쪼갬(keep-all), 칸보다 길 때만 줄바꿈(anywhere) */
-    .cal th, .cal td, .bk4 th, .bk4 td, .dt th, .dt td { text-align: center; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; border: 1px solid #e3e6ea; }
-    .cal thead th, .bk4 thead th, .dt thead th { padding: 5px 1px; font-size: 12px; font-weight: 600; color: #666; background: #fafbfc; }
+    .dt th, .dt td { text-align: center; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; border: 1px solid #e3e6ea; }
+    .dt thead th { padding: 5px 1px; font-size: 12px; font-weight: 600; color: #666; background: #fafbfc; }
     .it { display: block; }
     .c0, .c6 { background: #ffffcc; }                 /* 일·토 (시트 색) */
     .c1, .c3, .c5 { background: #eef1f4; }           /* 월·수·금 */
     .c2, .c4 { background: #fbe4d5; }                 /* 화·목 */
-    /* 달력: 휴무자 */
-    .cal col.wkl { width: 22px; }
-    .cal th.wkl { font-size: 11.5px; font-weight: 700; color: #1976d2; background: #f3f6fa; }
-    .cal td { padding: 3px 1px 6px; vertical-align: top; font-size: 12.5px; }
-    .cal td .dn { margin-bottom: 2px; padding-left: 3px; font-size: 10.5px; font-weight: 700; text-align: left; color: #8a8f96; }
-    .cal td.today { box-shadow: inset 0 0 0 2px #1976d2; }
-    .cal td.today .dn { color: #1976d2; }
-    /* 달력: 백업 (사람별 4주) */
-    .bk4 col.nm { width: 50px; }
-    .bk4 col.wkl { width: 30px; }
-    .bk4 td .rt { white-space: nowrap; }   /* 516CD 같은 라우트는 안 쪼갬 */
-    .bk4 th.nm { font-size: 12.5px; font-weight: 700; color: #222; background: #deeaf6; }
-    .bk4 td { padding: 4px 1px; font-size: 12px; }
-    .bk4 td.wkl { font-size: 10px; line-height: 1.2; color: #8a8f96; background: #f6f8fa; }
-    .bk4 td.wkl b { display: block; font-size: 11.5px; color: #1976d2; }
-    .bk4 tr.p0 th, .bk4 tr.p0 td { border-top: 2px solid #b9c6d6; }   /* 사람 구분 */
-    .bk4 tr.alt td:not(.wkl) { background: #fafcff; }
-    .bk4 td.today { box-shadow: inset 2px 0 0 #1976d2, inset -2px 0 0 #1976d2; }
-    /* 표: 시트처럼 주별로 이어 붙임 */
+    /* 휴무백업표: 시트처럼 주별로 이어 붙임 */
     .dt col.lab { width: 52px; }
     .dt th, .dt td { padding: 6px 1px; font-size: 12.5px; }
     .dt thead th .d { display: block; font-size: 14px; font-weight: 700; color: #222; }
@@ -95,6 +77,7 @@
     .dfoot { margin: 10px 2px 16px; font-size: 11.5px; line-height: 1.6; color: #999; }
     /* 전체 스케쥴: 쿠팡 어드민처럼 캠프별 사람 × 요일 (야간 표와 같은 모양) */
     #dayFull { flex: 1; min-height: 0; overflow: auto; }
+    .fnote { margin-top: 10px; padding: 9px 12px; font-size: 13px; line-height: 1.5; color: #7a5b00; background: #fff8e1; border: 1px solid #f3dd9b; border-radius: 10px; }
     .fbar { position: sticky; top: 0; z-index: 5; margin: -12px -12px 0; padding: 12px 12px 10px; background: #f4f5f7; box-shadow: 0 6px 6px -6px rgba(0, 0, 0, .18); }
     .fbar .n-bar { margin-bottom: 0; }
     .ft tr.camp td { padding: 5px 1px; font-size: 10.5px; line-height: 1.3; color: #555; background: #f3f5f8; white-space: normal; }
@@ -110,23 +93,12 @@
         .dvbar { padding: 6px 8px 0; }
         .dvbar.solo { padding-bottom: 6px; }
         .dview button { padding: 6px 6px; font-size: 12.5px; }
-        .cal td { font-size: 11.5px; letter-spacing: -.3px; }
         .dt th, .dt td { font-size: 11.5px; letter-spacing: -.3px; }
-        .bk4 td { font-size: 11px; letter-spacing: -.4px; }
-        .bk4 td.wkl { font-size: 9.5px; letter-spacing: -.3px; }
-        .bk4 col.nm { width: 42px; }
-        .bk4 col.wkl { width: 26px; }
-        .bk4 th.nm { font-size: 11.5px; }
         .dt col.lab { width: 44px; }
         .dt thead th .d { font-size: 13px; }
     }
-    @media (max-width: 340px) { .bk4 td .rt { white-space: normal; } }   /* 초소형 폰만 줄바꿈 허용 */
     @media (max-width: 380px) {
-        .cal td, .dt th, .dt td { font-size: 11px; letter-spacing: -.5px; }
-        .bk4 td { font-size: 10.5px; letter-spacing: -.5px; }
-        .cal col.wkl { width: 18px; }
-        .bk4 col.nm { width: 40px; }
-        .bk4 col.wkl { width: 24px; }
+        .dt th, .dt td { font-size: 11px; letter-spacing: -.5px; }
         .dt col.lab { width: 42px; }
     }
     .loading { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #333; background: rgba(255,255,255,.85); pointer-events: none; }
@@ -366,28 +338,7 @@
     }
     const items = v => toks(v).map(t => `<span class="it${/^\d{3}[A-Z]+$/.test(t) ? ' rt' : ''}">${esc(t)}</span>`).join('');
     const dnum = s => { const d = dateOf(s); return d.getDate() === 1 ? md(s) : String(d.getDate()); };
-    const wkLetter = x => x.name.replace(/\s*Week$/i, '');
 
-    function calHtml(ws) {   // 휴무자 달력: A~D주 × 일~토, 칸마다 그날 휴무자
-        const head = `<thead><tr><th class="wkl"></th>${ws[0].dates.map(d => `<th>${WD[dateOf(d).getDay()]}</th>`).join('')}</tr></thead>`;
-        const body = ws.map(x => `<tr><th class="wkl">${esc(wkLetter(x))}</th>${x.dates.map((d, k) =>
-            `<td class="c${dateOf(d).getDay()}${d === TODAY ? ' today' : ''}"><div class="dn">${d === TODAY ? '오늘 ' : ''}${dnum(d)}</div>${x.off.map(r => items(r.cells[k])).join('')}</td>`).join('')}</tr>`).join('');
-        return `<table class="cal"><colgroup><col class="wkl">${'<col>'.repeat(7)}</colgroup>${head}<tbody>${body}</tbody></table>`;
-    }
-    function bk4Html(ws) {   // 백업: 사람마다 4주를 한 묶음으로 (자기 이름만 찾으면 한 달치가 보임)
-        const people = [];
-        ws.forEach(x => x.backup.forEach(b => { if (!people.includes(b.name)) people.push(b.name); }));
-        const head = `<thead><tr><th>이름</th><th>주</th>${ws[0].dates.map(d => `<th>${WD[dateOf(d).getDay()]}</th>`).join('')}</tr></thead>`;
-        let body = '';
-        people.forEach((nm, pi) => ws.forEach((x, wi) => {
-            const row = x.backup.find(b => b.name === nm);
-            body += `<tr class="${wi === 0 ? 'p0' : ''}${pi % 2 ? ' alt' : ''}">`
-                + (wi === 0 ? `<th class="nm" rowspan="${ws.length}">${esc(nm)}</th>` : '')
-                + `<td class="wkl"><b>${esc(wkLetter(x))}</b>${md(x.dates[0])}</td>`
-                + x.dates.map((d, k) => `<td class="${d === TODAY ? 'today' : ''}">${row ? items(row.cells[k]) : ''}</td>`).join('') + '</tr>';
-        }));
-        return `<table class="bk4"><colgroup><col class="nm"><col class="wkl">${'<col>'.repeat(7)}</colgroup>${head}<tbody>${body}</tbody></table>`;
-    }
     function tableHtml(ws) {   // 표: 시트처럼 주별(휴무자 + 백업)로 위아래 이어 붙임
         const dlab = s => { const d = dateOf(s); return `<span class="d">${dnum(s)}${d.getDate() === 1 ? '' : '일'}</span><span class="w">(${WD[d.getDay()]})</span>`; };
         const mini = s => { const d = dateOf(s); return `${d.getDate()}(${WD[d.getDay()]})`; };
@@ -407,9 +358,9 @@
     const dayData = [];   // 기간별 { weeks, at(불러온 시각), fail, view(그려진 보기) }
     let dayShown = -1;
     const DD = window.DAY_DATA && window.DAY_DATA.dates && window.DAY_DATA.dates.length ? window.DAY_DATA : null;   // 전체 스케쥴 (day-data.js)
-    const DAY_VIEWS = [DD && ['full', '전체 스케쥴'], ['cal', '휴무자 달력 및 백업스케쥴'], ['table', '휴무백업표']].filter(Boolean);
+    const DAY_VIEWS = [DD && ['full', '전체 스케쥴'], ['table', '휴무백업표']].filter(Boolean);
     let dayView = store.get('day.view');
-    if (!DAY_VIEWS.some(v => v[0] === dayView)) dayView = 'cal';
+    if (!DAY_VIEWS.some(v => v[0] === dayView)) dayView = DD && DD.dates.includes(TODAY) ? 'full' : 'table';
     function loadDay(i) {
         const st = dayData[i] = dayData[i] || {};
         if (st.req) return st.req;
@@ -441,15 +392,12 @@
         f.innerHTML = `
             <div class="dwrap">
                 <div class="dbar"><span class="rng">${md(ws[0].dates[0])} ~ ${md(ws[ws.length - 1].dates[6])}</span></div>
-                ${dayView === 'cal'
-                    ? `<div class="dsec">휴무자 달력</div><div class="dbox">${calHtml(ws)}</div>
-                       <div class="dsec">백업스케쥴<small>사람별 4주 담당 라우트</small></div><div class="dbox">${bk4Html(ws)}</div>`
-                    : tableHtml(ws)}
+                ${tableHtml(ws)}
                 <div class="dfoot">구글시트에서 바로 불러옵니다 · 시트를 고치면 몇 분 안에 반영 · 라우트는 516C,516D → 516CD 처럼 줄여 표시 · 원본은 오른쪽 위 ↗</div>
             </div>`;
         if (keepScroll) { f.scrollTop = top; return; }
         f.scrollTop = 0;
-        if (dayView === 'table') {   // 표 보기는 이번 주로 바로 이동
+        {   // 휴무백업표는 이번 주로 바로 이동
             const k = ws.findIndex(x => x.dates.includes(TODAY));
             const el = k > 0 && f.querySelector(`.dwk[data-wi="${k}"]`);
             const bar = f.querySelector('.dbar');
@@ -482,7 +430,7 @@
     });
 
     // ---- 전체 스케쥴 (어드민처럼 캠프별 사람 × 요일, 주 단위) ----
-    let fullWeeks = [], fullWi = -1, fullHome = -1;
+    let fullWeeks = [], fullWi = -1, fullHome = -1, fullNoToday = false;
     if (DD) {
         const s0 = dateOf(DD.dates[0]);
         s0.setDate(s0.getDate() - s0.getDay());
@@ -493,8 +441,11 @@
         }
         const hit = fullWeeks.findIndex(w => w.includes(TODAY));
         fullHome = hit >= 0 ? hit : (TODAY < fullWeeks[0][0] ? 0 : fullWeeks.length - 1);
+        fullNoToday = hit < 0;
         fullWi = fullHome;
     }
+    const thisSun = (() => { const x = dateOf(TODAY); x.setDate(x.getDate() - x.getDay()); return isoOf(x); })();
+    const thisSat = (() => { const x = dateOf(thisSun); x.setDate(x.getDate() + 6); return isoOf(x); })();
     function renderFull() {
         const el = document.getElementById('dayFull');
         const idx = {};
@@ -530,6 +481,7 @@
                     <button type="button" class="nav" data-go="1" aria-label="다음 주"${fullWi === fullWeeks.length - 1 ? ' disabled' : ''}>▶</button>
                     ${fullWi !== fullHome ? '<button type="button" class="todaybtn" data-go="home">이번 주</button>' : ''}
                 </div></div>
+                ${fullNoToday ? `<div class="fnote">이번 주(${md(thisSun)} ~ ${md(thisSat)}) 전체 스케쥴은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 휴무백업표를 봐 주세요.</div>` : ''}
                 <div class="tbl-wrap" style="margin-top:10px">
                     <table class="nt ft">
                         <thead><tr><th class="name">이름</th>${days.map(d => `<th class="${tc(d).trim()}">${dlab(d)}</th>`).join('')}</tr></thead>
