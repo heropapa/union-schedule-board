@@ -43,8 +43,11 @@
     .dbar { position: sticky; top: 0; z-index: 5; display: flex; flex-direction: column; gap: 8px;
             margin: -12px -12px 0; padding: 12px 12px 10px; background: #f4f5f7; box-shadow: 0 6px 6px -6px rgba(0, 0, 0, .18); }
     .dbar .rng { font-size: 15px; font-weight: 700; }
-    .dview { display: flex; padding: 3px; background: #e7eaee; border-radius: 12px; }
-    .dview button { flex: 1 1 auto; padding: 7px 10px; font-size: 13px; font-weight: 700; line-height: 1.3; color: #555; word-break: keep-all; background: transparent; border: 0; border-radius: 10px; cursor: pointer; }
+    /* 보기 전환: 기간 탭 위 고정 영역 (스크롤과 무관하게 항상 보임) */
+    .dvbar { flex: none; padding: 8px 10px 0; background: #f1f1f1; }
+    .dvbar.solo { padding-bottom: 8px; }   /* 전체 스케쥴일 땐 기간 탭이 없어서 */
+    .dview { display: flex; padding: 3px; background: #e2e5e9; border-radius: 12px; }
+    .dview button { flex: 1 1 0; padding: 7px 10px; font-size: 13px; font-weight: 700; line-height: 1.3; color: #555; word-break: keep-all; background: transparent; border: 0; border-radius: 10px; cursor: pointer; }
     .dview button.on { color: #fff; background: #1976d2; }
     .dsec { margin: 14px 2px 6px; font-size: 14px; font-weight: 700; color: #333; }
     .dsec small { margin-left: 6px; font-size: 11.5px; font-weight: 500; color: #888; }
@@ -90,10 +93,23 @@
     .dt tr.sec td { padding: 4px 1px; font-size: 10.5px; color: #555; background: #d9e2f3; }
     .dt tr.sec td.lab { font-size: 12px; color: #222; background: #bdd6ee; }
     .dfoot { margin: 10px 2px 16px; font-size: 11.5px; line-height: 1.6; color: #999; }
+    /* 전체 스케쥴: 쿠팡 어드민처럼 캠프별 사람 × 요일 (야간 표와 같은 모양) */
+    #dayFull { flex: 1; min-height: 0; overflow: auto; }
+    .fbar { position: sticky; top: 0; z-index: 5; margin: -12px -12px 0; padding: 12px 12px 10px; background: #f4f5f7; box-shadow: 0 6px 6px -6px rgba(0, 0, 0, .18); }
+    .fbar .n-bar { margin-bottom: 0; }
+    .ft tr.camp td { padding: 5px 1px; font-size: 10.5px; line-height: 1.3; color: #555; background: #f3f5f8; white-space: normal; }
+    .ft tr.camp td.name { font-size: 12.5px; font-weight: 700; color: #333; }
+    .ft tr.camp td.name small { display: block; font-size: 10.5px; font-weight: 500; color: #888; }
+    .ft tr.camp td b { font-size: 11.5px; color: #1f3864; }
+    .ft td .cp { display: block; margin-top: 1px; font-size: 10px; font-weight: 600; color: #6a4c93; }   /* 다른 캠프 라우트 */
+    .ft td.off .cp { display: none; }
     .dmsg { padding: 40px 12px; text-align: center; font-size: 15px; color: #666; }
     @media (max-width: 480px) {
         .dwrap { padding: 10px 8px; }
-        .dbar { margin: -10px -8px 0; padding: 10px 8px 8px; }
+        .dbar, .fbar { margin: -10px -8px 0; padding: 10px 8px 8px; }
+        .dvbar { padding: 6px 8px 0; }
+        .dvbar.solo { padding-bottom: 6px; }
+        .dview button { padding: 6px 6px; font-size: 12.5px; }
         .cal td { font-size: 11.5px; letter-spacing: -.3px; }
         .dt th, .dt td { font-size: 11.5px; letter-spacing: -.3px; }
         .bk4 td { font-size: 11px; letter-spacing: -.4px; }
@@ -185,14 +201,17 @@
 <main>
     <section id="day" hidden>
         <div class="day-view">
+            <div class="dvbar" id="dayViewBar"></div>
             <nav class="mtabs" id="dayTabs"></nav>
             <div class="frames" id="dayFrames"></div>
+            <div id="dayFull" hidden></div>
         </div>
     </section>
     <section id="night" hidden></section>
 </main>
 
 <script src="night-data.js"></script>
+<script src="day-data.js"></script>
 <script>
 (function () {
     // ===================== 여기만 고치면 됩니다 =====================
@@ -387,7 +406,10 @@
 
     const dayData = [];   // 기간별 { weeks, at(불러온 시각), fail, view(그려진 보기) }
     let dayShown = -1;
-    let dayView = store.get('day.view') === 'table' ? 'table' : 'cal';
+    const DD = window.DAY_DATA && window.DAY_DATA.dates && window.DAY_DATA.dates.length ? window.DAY_DATA : null;   // 전체 스케쥴 (day-data.js)
+    const DAY_VIEWS = [DD && ['full', '전체 스케쥴'], ['cal', '휴무자 달력 및 백업스케쥴'], ['table', '휴무백업표']].filter(Boolean);
+    let dayView = store.get('day.view');
+    if (!DAY_VIEWS.some(v => v[0] === dayView)) dayView = 'cal';
     function loadDay(i) {
         const st = dayData[i] = dayData[i] || {};
         if (st.req) return st.req;
@@ -418,25 +440,13 @@
         f.classList.add('native');
         f.innerHTML = `
             <div class="dwrap">
-                <div class="dbar">
-                    <span class="rng">${md(ws[0].dates[0])} ~ ${md(ws[ws.length - 1].dates[6])}</span>
-                    <div class="dview" role="tablist" aria-label="보기 방식">
-                        <button type="button" data-v="cal" class="${dayView === 'cal' ? 'on' : ''}">휴무자 달력 및 백업스케쥴</button>
-                        <button type="button" data-v="table" class="${dayView === 'table' ? 'on' : ''}">휴무백업표</button>
-                    </div>
-                </div>
+                <div class="dbar"><span class="rng">${md(ws[0].dates[0])} ~ ${md(ws[ws.length - 1].dates[6])}</span></div>
                 ${dayView === 'cal'
                     ? `<div class="dsec">휴무자 달력</div><div class="dbox">${calHtml(ws)}</div>
                        <div class="dsec">백업스케쥴<small>사람별 4주 담당 라우트</small></div><div class="dbox">${bk4Html(ws)}</div>`
                     : tableHtml(ws)}
                 <div class="dfoot">구글시트에서 바로 불러옵니다 · 시트를 고치면 몇 분 안에 반영 · 라우트는 516C,516D → 516CD 처럼 줄여 표시 · 원본은 오른쪽 위 ↗</div>
             </div>`;
-        f.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => {
-            if (b.dataset.v === dayView) return;
-            dayView = b.dataset.v;
-            store.set('day.view', dayView);
-            renderDay(i);
-        }));
         if (keepScroll) { f.scrollTop = top; return; }
         f.scrollTop = 0;
         if (dayView === 'table') {   // 표 보기는 이번 주로 바로 이동
@@ -467,13 +477,111 @@
     // 폰에서 게시판을 열어둔 채 다시 볼 때: 3분 넘게 지났으면 시트를 다시 불러와 최신으로 (보던 위치 유지)
     document.addEventListener('visibilitychange', () => {
         const i = dayShown, st = dayData[i];
-        if (document.hidden || i < 0 || !st || !st.weeks || Date.now() - st.at < 3 * 60 * 1000) return;
+        if (document.hidden || dayView === 'full' || i < 0 || !st || !st.weeks || Date.now() - st.at < 3 * 60 * 1000) return;
         loadDay(i).then(() => renderDay(i, true));
     });
 
-    function ensureDayTab() {
+    // ---- 전체 스케쥴 (어드민처럼 캠프별 사람 × 요일, 주 단위) ----
+    let fullWeeks = [], fullWi = -1, fullHome = -1;
+    if (DD) {
+        const s0 = dateOf(DD.dates[0]);
+        s0.setDate(s0.getDate() - s0.getDay());
+        for (const w = new Date(s0); isoOf(w) <= DD.dates[DD.dates.length - 1]; w.setDate(w.getDate() + 7)) {
+            const days = [];
+            for (let k = 0; k < 7; k++) { const x = new Date(w); x.setDate(w.getDate() + k); days.push(isoOf(x)); }
+            if (days.some(d => DD.dates.includes(d))) fullWeeks.push(days);
+        }
+        const hit = fullWeeks.findIndex(w => w.includes(TODAY));
+        fullHome = hit >= 0 ? hit : (TODAY < fullWeeks[0][0] ? 0 : fullWeeks.length - 1);
+        fullWi = fullHome;
+    }
+    function renderFull() {
+        const el = document.getElementById('dayFull');
+        const idx = {};
+        DD.dates.forEach((d, k) => { idx[d] = k; });
+        const days = fullWeeks[fullWi].filter(d => d in idx);
+        const dlab = s => { const x = dateOf(s); return `<span class="d">${dnum(s)}${x.getDate() === 1 ? '' : '일'}</span><span class="w">(${WD[x.getDay()]})</span>`; };
+        const tc = d => (d === TODAY ? ' today' : '');
+        let body = '';
+        DD.camps.forEach(c => {
+            const cnt = days.map(d => {   // 출근 = 그날 이 캠프 라우트를 뛴 사람 (어드민 숫자와 같음), 휴 = 이 캠프 사람 중 휴무
+                let on = 0, off = 0;
+                DD.camps.forEach(c2 => c2.people.forEach(p => { const v = p.days[idx[d]]; if (v && v !== '휴' && (v.c || c2.name) === c.name) on++; }));
+                c.people.forEach(p => { if (p.days[idx[d]] === '휴') off++; });
+                return `<td class="${tc(d).trim()}"><b>${on}</b> 출근<br>휴 ${off}</td>`;
+            }).join('');
+            body += `<tr class="camp"><td class="name">${esc(c.name)}<small>${c.people.length}명</small></td>${cnt}</tr>`;
+            c.people.forEach(p => {
+                const cells = days.map(d => {
+                    const v = p.days[idx[d]];
+                    if (v === '휴') return `<td class="off${tc(d)}">휴</td>`;
+                    if (!v) return `<td class="${tc(d).trim()}"></td>`;
+                    return `<td class="${tc(d).trim()}">${items(v.r)}${v.t ? `<small class="rot">${esc(v.t)}</small>` : ''}${v.c ? `<small class="cp">${esc(v.c)}</small>` : ''}</td>`;
+                }).join('');
+                body += `<tr><td class="name"><b>${esc(p.name)}</b></td>${cells}</tr>`;
+            });
+        });
+        const top = el.scrollTop;
+        el.innerHTML = `
+            <div class="dwrap">
+                <div class="fbar"><div class="n-bar">
+                    <button type="button" class="nav" data-go="-1" aria-label="이전 주"${fullWi === 0 ? ' disabled' : ''}>◀</button>
+                    <span class="wk">${md(days[0])} ~ ${md(days[days.length - 1])}<small>${DD.camps.map(c => `${esc(c.name)} ${c.people.length}명`).join(' · ')}</small></span>
+                    <button type="button" class="nav" data-go="1" aria-label="다음 주"${fullWi === fullWeeks.length - 1 ? ' disabled' : ''}>▶</button>
+                    ${fullWi !== fullHome ? '<button type="button" class="todaybtn" data-go="home">이번 주</button>' : ''}
+                </div></div>
+                <div class="tbl-wrap" style="margin-top:10px">
+                    <table class="nt ft">
+                        <thead><tr><th class="name">이름</th>${days.map(d => `<th class="${tc(d).trim()}">${dlab(d)}</th>`).join('')}</tr></thead>
+                        <tbody>${body}</tbody>
+                    </table>
+                </div>
+                <div class="legend">
+                    <span><i class="chip" style="background:#ffe3e6;border:1px solid #f5a3ad"></i>휴무</span>
+                    <span><b style="font-size:11px">2회전</b> 한 라우트를 나눠 뛴 날</span>
+                    <span><b style="font-size:11px;color:#6a4c93">부산2</b> 다른 캠프 라우트</span>
+                </div>
+                <div class="dfoot">쿠팡 어드민 스케쥴(유스프에서 뽑은 엑셀) 기준 · ${md(DD.dates[0])} ~ ${md(DD.dates[DD.dates.length - 1])} 등록 · 라우트는 516C,516D → 516CD 처럼 줄여 표시 · 두 캠프에 등록된 사람은 출근이 많은 캠프에 한 번만</div>
+            </div>`;
+        el.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
+            const g = b.dataset.go;
+            fullWi = g === 'home' ? fullHome : Math.max(0, Math.min(fullWeeks.length - 1, fullWi + Number(g)));
+            renderFull();
+            el.scrollTop = 0;
+        }));
+        el.dataset.wi = String(fullWi);
+        if (el.dataset.keep) el.scrollTop = top;
+    }
+
+    function buildDayViews() {
+        const bar = document.getElementById('dayViewBar');
+        bar.innerHTML = `<div class="dview" role="tablist" aria-label="보기 방식">${DAY_VIEWS.map(([v, label]) =>
+            `<button type="button" data-v="${v}">${label}</button>`).join('')}</div>`;
+        bar.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => {
+            if (b.dataset.v === dayView) return;
+            dayView = b.dataset.v;
+            store.set('day.view', dayView);
+            ensureDayTab();
+        }));
+    }
+    function ensureDayTab() {   // 지금 보기에 맞게 화면 구성 (전체 스케쥴 ↔ 기간 탭 + 시트 보기)
+        document.querySelectorAll('#dayViewBar [data-v]').forEach(b => {
+            const on = b.dataset.v === dayView;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-selected', on);
+        });
+        const full = dayView === 'full';
+        document.getElementById('dayViewBar').classList.toggle('solo', full);
+        document.getElementById('dayTabs').hidden = full;
+        document.getElementById('dayFrames').hidden = full;
+        document.getElementById('dayFull').hidden = !full;
+        if (full) {
+            if (document.getElementById('dayFull').dataset.wi == null) renderFull();
+            return;
+        }
         if (dayCur < 0) return;
-        if (!document.querySelector('#dayTabs button.on')) showDayTab(dayCur);
+        const on = document.querySelector('#dayTabs button.on');
+        showDayTab(on ? [...document.querySelectorAll('#dayTabs button')].indexOf(on) : dayCur);
     }
 
     // ------------------------- 야간 -------------------------
@@ -602,6 +710,7 @@
     }
 
     buildDay();
+    buildDayViews();
     try { buildNight(); } catch (e) {
         document.getElementById('night').innerHTML = '<div class="night"><div class="summary">야간 근무표를 표시하지 못했습니다.</div></div>';
     }
