@@ -36,42 +36,80 @@
     .frames { flex: 1; min-height: 0; position: relative; }
     .frame { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; padding: 10px; overflow: auto; }
     .frame iframe { width: 100%; height: 100%; border: none; transform-origin: top left; }
-    /* 주간 표: 구글시트 내용을 불러와 시트와 같은 모양으로 직접 그림 (휴무자 / 백업 / 백업휴무자, 색도 시트 그대로) */
+    /* 주간: 구글시트 내용을 불러와 4주(한 기간)를 한 화면에 — [달력 | 표] 두 가지 보기 */
     .frame.native { padding: 0; }
     .dwrap { max-width: 760px; margin: 0 auto; padding: 12px; }
-    table.dt { width: 100%; min-width: 300px; table-layout: fixed; border-collapse: collapse; font-size: 12.5px; background: #fff; }
+    .dbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .dbar .rng { font-size: 15px; font-weight: 700; }
+    .dview { flex: none; display: flex; padding: 3px; background: #e7eaee; border-radius: 999px; }
+    .dview button { padding: 6px 14px; font-size: 13px; font-weight: 700; color: #555; background: transparent; border: 0; border-radius: 999px; cursor: pointer; }
+    .dview button.on { color: #fff; background: #1976d2; }
+    .dsec { margin: 14px 2px 6px; font-size: 14px; font-weight: 700; color: #333; }
+    .dsec small { margin-left: 6px; font-size: 11.5px; font-weight: 500; color: #888; }
+    .dbox { overflow-x: auto; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; }
+    table.cal, table.bk4, table.dt { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; }
     /* 이름은 가능한 한 안 쪼갬(keep-all), 칸보다 길 때만 줄바꿈(anywhere) */
-    .dt th, .dt td { padding: 6px 1px; text-align: center; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; border: 1px solid #dfe3e8; }
+    .cal th, .cal td, .bk4 th, .bk4 td, .dt th, .dt td { text-align: center; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; border: 1px solid #e3e6ea; }
+    .cal thead th, .bk4 thead th, .dt thead th { padding: 5px 1px; font-size: 12px; font-weight: 600; color: #666; background: #fafbfc; }
+    .it { display: block; }
+    .c0, .c6 { background: #ffffcc; }                 /* 일·토 (시트 색) */
+    .c1, .c3, .c5 { background: #eef1f4; }           /* 월·수·금 */
+    .c2, .c4 { background: #fbe4d5; }                 /* 화·목 */
+    /* 달력: 휴무자 */
+    .cal col.wkl { width: 22px; }
+    .cal th.wkl { font-size: 11.5px; font-weight: 700; color: #1976d2; background: #f3f6fa; }
+    .cal td { padding: 3px 1px 6px; vertical-align: top; font-size: 12.5px; }
+    .cal td .dn { margin-bottom: 2px; padding-left: 3px; font-size: 10.5px; font-weight: 700; text-align: left; color: #8a8f96; }
+    .cal td.today { box-shadow: inset 0 0 0 2px #1976d2; }
+    .cal td.today .dn { color: #1976d2; }
+    /* 달력: 백업 (사람별 4주) */
+    .bk4 col.nm { width: 50px; }
+    .bk4 col.wkl { width: 30px; }
+    .bk4 td .rt { white-space: nowrap; }   /* 516CD 같은 라우트는 안 쪼갬 */
+    .bk4 th.nm { font-size: 12.5px; font-weight: 700; color: #222; background: #deeaf6; }
+    .bk4 td { padding: 4px 1px; font-size: 12px; }
+    .bk4 td.wkl { font-size: 10px; line-height: 1.2; color: #8a8f96; background: #f6f8fa; }
+    .bk4 td.wkl b { display: block; font-size: 11.5px; color: #1976d2; }
+    .bk4 tr.p0 th, .bk4 tr.p0 td { border-top: 2px solid #b9c6d6; }   /* 사람 구분 */
+    .bk4 tr.alt td:not(.wkl) { background: #fafcff; }
+    .bk4 td.today { box-shadow: inset 2px 0 0 #1976d2, inset -2px 0 0 #1976d2; }
+    /* 표: 시트처럼 주별로 이어 붙임 */
     .dt col.lab { width: 52px; }
-    .dt thead th { font-size: 12px; font-weight: 600; color: #666; background: #fafbfc; }
+    .dt th, .dt td { padding: 6px 1px; font-size: 12.5px; }
     .dt thead th .d { display: block; font-size: 14px; font-weight: 700; color: #222; }
     .dt thead th .w { display: block; font-size: 11px; font-weight: 500; }
     .dt thead th.lab { color: #333; background: #eaedf1; }
     .dt thead th.today { color: #fff; background: #1976d2; }
     .dt thead th.today .d { color: #fff; }
     .dt td.today { box-shadow: inset 2px 0 0 #1976d2, inset -2px 0 0 #1976d2; }
-    .dt td.lab { font-weight: 600; color: #333; }
-    .dt tr.off td.lab { background: #ececec; }
-    .dt tr.off td.c0, .dt tr.off td.c6 { background: #ffffcc; }   /* 일·토 */
-    .dt tr.off td.c1, .dt tr.off td.c3, .dt tr.off td.c5 { background: #eaedf1; }   /* 월·수·금 */
-    .dt tr.off td.c2, .dt tr.off td.c4 { background: #fbe4d5; }   /* 화·목 */
-    .dt tr.sec td { padding: 4px 2px; font-size: 10.5px; color: #555; }
-    .dt tr.sec td.lab { font-size: 12px; color: #222; }
-    .dt tr.sec.bk td { background: #d9e2f3; }
-    .dt tr.sec.bk td.lab { background: #bdd6ee; }
+    .dt td.lab { font-weight: 600; color: #333; background: #ececec; }
+    .dt tr.bk td { background: #fff; }
     .dt tr.bk td.lab { background: #deeaf6; }
-    .dt tr.sec.bo td { background: #e2efd9; }
-    .dt tr.sec.bo td.lab, .dt tr.bo td.lab { background: #c5e0b3; }
-    .dt td .ln { display: block; }   /* '708C,709B' → 줄 나눔 */
-    .dfoot { margin: 8px 2px 16px; font-size: 11.5px; line-height: 1.6; color: #999; }
+    .dt tr.sec td { padding: 4px 1px; font-size: 10.5px; color: #555; background: #d9e2f3; }
+    .dt tr.sec td.lab { font-size: 12px; color: #222; background: #bdd6ee; }
+    .dfoot { margin: 10px 2px 16px; font-size: 11.5px; line-height: 1.6; color: #999; }
+    .dmsg { padding: 40px 12px; text-align: center; font-size: 15px; color: #666; }
     @media (max-width: 480px) {
         .dwrap { padding: 10px 8px; }
-        table.dt { font-size: 11.5px; letter-spacing: -.3px; }
+        .cal td { font-size: 11.5px; letter-spacing: -.3px; }
+        .dt th, .dt td { font-size: 11.5px; letter-spacing: -.3px; }
+        .bk4 td { font-size: 11px; letter-spacing: -.4px; }
+        .bk4 td.wkl { font-size: 9.5px; letter-spacing: -.3px; }
+        .bk4 col.nm { width: 42px; }
+        .bk4 col.wkl { width: 26px; }
+        .bk4 th.nm { font-size: 11.5px; }
         .dt col.lab { width: 44px; }
         .dt thead th .d { font-size: 13px; }
     }
-    @media (max-width: 380px) { table.dt { font-size: 11px; letter-spacing: -.5px; } .dt col.lab { width: 42px; } }
-    .dmsg { padding: 40px 12px; text-align: center; font-size: 15px; color: #666; }
+    @media (max-width: 340px) { .bk4 td .rt { white-space: normal; } }   /* 초소형 폰만 줄바꿈 허용 */
+    @media (max-width: 380px) {
+        .cal td, .dt th, .dt td { font-size: 11px; letter-spacing: -.5px; }
+        .bk4 td { font-size: 10.5px; letter-spacing: -.5px; }
+        .cal col.wkl { width: 18px; }
+        .bk4 col.nm { width: 40px; }
+        .bk4 col.wkl { width: 24px; }
+        .dt col.lab { width: 42px; }
+    }
     .loading { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #333; background: rgba(255,255,255,.85); pointer-events: none; }
 
     /* 야간 */
@@ -246,7 +284,7 @@
         if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
         return rows;
     }
-    // 시트 모양: 'A Week' → '휴무자 | 9월 13일 (일) … (토)' → 번호 행 → '백업' → 이름 행 → '백업휴무자' → 번호 행
+    // 시트 모양: 'A Week' → '휴무자 | 9월 13일 (일) … (토)' → 번호 행 → '백업' → 이름 행 (→ '백업휴무자' 는 읽기만 하고 안 보여줌)
     function parseDaySheet(rows, from) {
         const f0 = dateOf(from), DAY = 864e5;
         const iso = (mo, d) => {   // 표엔 연도가 없음 → 기간 시작일과 가까운 해로
@@ -294,8 +332,59 @@
         return weeks;
     }
 
-    const dayData = [];   // 기간별 { weeks, at(불러온 시각), fail, wi(보고 있는 주) }
+    // 라우트는 같은 번호끼리 줄여 씀: '516C,516D' → 516CD, '712A,712B,713A' → 712AB / 713A (야간과 같은 표기)
+    function toks(v) {
+        const out = [];
+        (v || '').split(',').map(t => t.trim()).filter(Boolean).forEach(t => {
+            const m = /^(\d{3})([A-Z])$/.exec(t), last = out[out.length - 1];
+            if (m && last && last.p === m[1] && last.r) last.s += m[2];
+            else out.push(m ? { p: m[1], s: m[2], r: true } : { p: t, s: '', r: false });
+        });
+        return out.map(o => o.p + o.s);
+    }
+    const items = v => toks(v).map(t => `<span class="it${/^\d{3}[A-Z]+$/.test(t) ? ' rt' : ''}">${esc(t)}</span>`).join('');
+    const dnum = s => { const d = dateOf(s); return d.getDate() === 1 ? md(s) : String(d.getDate()); };
+    const wkLetter = x => x.name.replace(/\s*Week$/i, '');
+
+    function calHtml(ws) {   // 휴무자 달력: A~D주 × 일~토, 칸마다 그날 휴무자
+        const head = `<thead><tr><th class="wkl"></th>${ws[0].dates.map(d => `<th>${WD[dateOf(d).getDay()]}</th>`).join('')}</tr></thead>`;
+        const body = ws.map(x => `<tr><th class="wkl">${esc(wkLetter(x))}</th>${x.dates.map((d, k) =>
+            `<td class="c${dateOf(d).getDay()}${d === TODAY ? ' today' : ''}"><div class="dn">${d === TODAY ? '오늘 ' : ''}${dnum(d)}</div>${x.off.map(r => items(r.cells[k])).join('')}</td>`).join('')}</tr>`).join('');
+        return `<table class="cal"><colgroup><col class="wkl">${'<col>'.repeat(7)}</colgroup>${head}<tbody>${body}</tbody></table>`;
+    }
+    function bk4Html(ws) {   // 백업: 사람마다 4주를 한 묶음으로 (자기 이름만 찾으면 한 달치가 보임)
+        const people = [];
+        ws.forEach(x => x.backup.forEach(b => { if (!people.includes(b.name)) people.push(b.name); }));
+        const head = `<thead><tr><th>이름</th><th>주</th>${ws[0].dates.map(d => `<th>${WD[dateOf(d).getDay()]}</th>`).join('')}</tr></thead>`;
+        let body = '';
+        people.forEach((nm, pi) => ws.forEach((x, wi) => {
+            const row = x.backup.find(b => b.name === nm);
+            body += `<tr class="${wi === 0 ? 'p0' : ''}${pi % 2 ? ' alt' : ''}">`
+                + (wi === 0 ? `<th class="nm" rowspan="${ws.length}">${esc(nm)}</th>` : '')
+                + `<td class="wkl"><b>${esc(wkLetter(x))}</b>${md(x.dates[0])}</td>`
+                + x.dates.map((d, k) => `<td class="${d === TODAY ? 'today' : ''}">${row ? items(row.cells[k]) : ''}</td>`).join('') + '</tr>';
+        }));
+        return `<table class="bk4"><colgroup><col class="nm"><col class="wkl">${'<col>'.repeat(7)}</colgroup>${head}<tbody>${body}</tbody></table>`;
+    }
+    function tableHtml(ws) {   // 표: 시트처럼 주별(휴무자 + 백업)로 위아래 이어 붙임
+        const dlab = s => { const d = dateOf(s); return `<span class="d">${dnum(s)}${d.getDate() === 1 ? '' : '일'}</span><span class="w">(${WD[d.getDay()]})</span>`; };
+        const mini = s => { const d = dateOf(s); return `${d.getDate()}(${WD[d.getDay()]})`; };
+        return ws.map((x, wi) => {
+            const cell = (v, d, cls) => `<td class="${cls || ''}${d === TODAY ? ' today' : ''}">${items(v)}</td>`;
+            const off = x.off.map(r => `<tr><td class="lab">${esc(r.no)}</td>${r.cells.map((v, k) => cell(v, x.dates[k], 'c' + dateOf(x.dates[k]).getDay())).join('')}</tr>`).join('');
+            const bk = x.backup.map(r => `<tr class="bk"><td class="lab">${esc(r.name)}</td>${r.cells.map((v, k) => cell(v, x.dates[k])).join('')}</tr>`).join('');
+            return `<div class="dwk" data-wi="${wi}">
+                <div class="dsec">${esc(x.name)}<small>${md(x.dates[0])} ~ ${md(x.dates[6])}</small></div>
+                <div class="dbox"><table class="dt"><colgroup><col class="lab">${'<col>'.repeat(7)}</colgroup>
+                    <thead><tr><th class="lab">휴무자</th>${x.dates.map(d => `<th class="${d === TODAY ? 'today' : ''}">${dlab(d)}</th>`).join('')}</tr></thead>
+                    <tbody>${off}<tr class="sec"><td class="lab">백업</td>${x.dates.map(d => `<td class="${d === TODAY ? 'today' : ''}">${mini(d)}</td>`).join('')}</tr>${bk}</tbody>
+                </table></div></div>`;
+        }).join('');
+    }
+
+    const dayData = [];   // 기간별 { weeks, at(불러온 시각), fail, view(그려진 보기) }
     let dayShown = -1;
+    let dayView = store.get('day.view') === 'table' ? 'table' : 'cal';
     function loadDay(i) {
         const st = dayData[i] = dayData[i] || {};
         if (st.req) return st.req;
@@ -305,14 +394,6 @@
             .catch(e => { if (!st.weeks) st.fail = true; if (window.console) console.warn('주간 시트 불러오기 실패 → 시트 화면으로 대체', e); })
             .then(() => { st.req = null; });
         return st.req;
-    }
-    function weekFor(i, pick) {
-        const ws = dayData[i].weeks;
-        if (pick === 'first') return 0;
-        if (pick === 'last') return ws.length - 1;
-        const hit = ws.findIndex(x => x.dates.includes(TODAY));
-        if (hit >= 0) return hit;
-        return TODAY > ws[ws.length - 1].dates[6] ? ws.length - 1 : 0;
     }
     function dayFallback(i) {   // 예전 방식: 시트 화면을 축소해서 띄움
         const f = document.querySelectorAll('#dayFrames .frame')[i];
@@ -325,53 +406,44 @@
         f.appendChild(ifr);
         scaleFrames();
     }
-    function renderDay(i) {
+    function renderDay(i, keepScroll) {
         const f = document.querySelectorAll('#dayFrames .frame')[i];
         const st = dayData[i];
         if (!f || !st || !st.weeks) return;
-        const ws = st.weeks, x = ws[st.wi];
-        const homeI = dayCur, atHome = i === homeI && st.wi === weekFor(i, 'today');
-        const dlab = s => { const d = dateOf(s); return `<span class="d">${d.getDate() === 1 ? md(s) : d.getDate() + '일'}</span><span class="w">(${WD[d.getDay()]})</span>`; };
-        const mini = s => { const d = dateOf(s); return `${d.getDate()}(${WD[d.getDay()]})`; };
-        const tc = (d, k) => `c${dateOf(d).getDay()}${d === TODAY ? ' today' : ''}`;
-        const cell = (v, d, k) => `<td class="${tc(d, k)}">${v.split(',').map(t => t.trim()).filter(Boolean).map(t => `<span class="ln">${esc(t)}</span>`).join('')}</td>`;
-        const rowsOf = (list, cls) => list.map(r => `<tr class="${cls}"><td class="lab">${esc(r.no != null ? r.no : r.name)}</td>${r.cells.map((v, k) => cell(v, x.dates[k], k)).join('')}</tr>`).join('');
-        const secRow = (label, cls) => `<tr class="sec ${cls}"><td class="lab">${label}</td>${x.dates.map(d => `<td class="${d === TODAY ? 'today' : ''}">${mini(d)}</td>`).join('')}</tr>`;
-        const canPrev = st.wi > 0 || i > 0, canNext = st.wi < ws.length - 1 || i < DAY_SHEETS.length - 1;
+        const ws = st.weeks, top = f.scrollTop;
+        st.view = dayView;
         f.classList.add('native');
         f.innerHTML = `
             <div class="dwrap">
-                <div class="n-bar">
-                    <button type="button" class="nav" data-go="-1" aria-label="이전 주"${canPrev ? '' : ' disabled'}>◀</button>
-                    <span class="wk">${esc(x.name)}<small>${md(x.dates[0])} ~ ${md(x.dates[6])}</small></span>
-                    <button type="button" class="nav" data-go="1" aria-label="다음 주"${canNext ? '' : ' disabled'}>▶</button>
-                    ${atHome || homeI < 0 ? '' : '<button type="button" class="todaybtn" data-go="home">이번 주</button>'}
+                <div class="dbar">
+                    <span class="rng">${md(ws[0].dates[0])} ~ ${md(ws[ws.length - 1].dates[6])}</span>
+                    <div class="dview" role="tablist" aria-label="보기 방식">
+                        <button type="button" data-v="cal" class="${dayView === 'cal' ? 'on' : ''}">달력</button>
+                        <button type="button" data-v="table" class="${dayView === 'table' ? 'on' : ''}">표</button>
+                    </div>
                 </div>
-                <div class="tbl-wrap">
-                    <table class="dt">
-                        <colgroup><col class="lab">${'<col>'.repeat(7)}</colgroup>
-                        <thead><tr><th class="lab">휴무자</th>${x.dates.map(d => `<th class="${d === TODAY ? 'today' : ''}">${dlab(d)}</th>`).join('')}</tr></thead>
-                        <tbody>
-                            ${rowsOf(x.off, 'off')}
-                            ${secRow('백업', 'bk')}
-                            ${rowsOf(x.backup, 'bk')}
-                            ${secRow('백업<br>휴무자', 'bo')}
-                            ${rowsOf(x.boff, 'bo')}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="dfoot">구글시트에서 바로 불러옵니다 · 시트를 고치면 몇 분 안에 반영 · 원본은 오른쪽 위 ↗</div>
+                ${dayView === 'cal'
+                    ? `<div class="dsec">휴무자</div><div class="dbox">${calHtml(ws)}</div>
+                       <div class="dsec">백업<small>사람별 4주 담당 라우트</small></div><div class="dbox">${bk4Html(ws)}</div>`
+                    : tableHtml(ws)}
+                <div class="dfoot">구글시트에서 바로 불러옵니다 · 시트를 고치면 몇 분 안에 반영 · 라우트는 516C,516D → 516CD 처럼 줄여 표시 · 원본은 오른쪽 위 ↗</div>
             </div>`;
-        f.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
-            const g = b.dataset.go;
-            if (g === 'home') return showDayTab(homeI);
-            const n = st.wi + Number(g);
-            if (n >= 0 && n < ws.length) { st.wi = n; renderDay(i); f.scrollTop = 0; }
-            else showDayTab(i + Number(g), Number(g) < 0 ? 'last' : 'first');   // 앞뒤 기간으로 넘어감
+        f.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => {
+            if (b.dataset.v === dayView) return;
+            dayView = b.dataset.v;
+            store.set('day.view', dayView);
+            renderDay(i);
         }));
+        if (keepScroll) { f.scrollTop = top; return; }
+        f.scrollTop = 0;
+        if (dayView === 'table') {   // 표 보기는 이번 주로 바로 이동
+            const k = ws.findIndex(x => x.dates.includes(TODAY));
+            const el = k > 0 && f.querySelector(`.dwk[data-wi="${k}"]`);
+            if (el) f.scrollTop = el.offsetTop - 4;
+        }
     }
 
-    function showDayTab(i, pick) {
+    function showDayTab(i) {
         if (i < 0 || i >= DAY_SHEETS.length) return;
         dayShown = i;
         const tabBtns = document.querySelectorAll('#dayTabs button');
@@ -384,24 +456,15 @@
         const f = frames[i];
         if (!f || f.querySelector('iframe')) return;   // 이미 시트 화면으로 대체된 기간
         const st = dayData[i];
-        if (st && st.weeks) { st.wi = weekFor(i, pick); renderDay(i); f.scrollTop = 0; return; }
+        if (st && st.weeks) { if (st.view !== dayView) renderDay(i); return; }
         if (!f.querySelector('.dwrap')) f.innerHTML = '<div class="dmsg">불러오는 중…</div>';
-        loadDay(i).then(() => {
-            const s2 = dayData[i];
-            if (s2.weeks) { if (s2.wi == null || dayShown === i) s2.wi = weekFor(i, pick); renderDay(i); }
-            else dayFallback(i);
-        });
+        loadDay(i).then(() => { if (dayData[i].weeks) renderDay(i); else dayFallback(i); });
     }
-    // 폰에서 게시판을 열어둔 채 다시 볼 때: 3분 넘게 지났으면 시트를 다시 불러와 최신으로
+    // 폰에서 게시판을 열어둔 채 다시 볼 때: 3분 넘게 지났으면 시트를 다시 불러와 최신으로 (보던 위치 유지)
     document.addEventListener('visibilitychange', () => {
         const i = dayShown, st = dayData[i];
         if (document.hidden || i < 0 || !st || !st.weeks || Date.now() - st.at < 3 * 60 * 1000) return;
-        const keep = st.weeks[st.wi] && st.weeks[st.wi].dates[0];
-        loadDay(i).then(() => {
-            const k = st.weeks.findIndex(w => w.dates[0] === keep);
-            st.wi = k >= 0 ? k : Math.min(st.wi, st.weeks.length - 1);
-            renderDay(i);
-        });
+        loadDay(i).then(() => renderDay(i, true));
     });
 
     function ensureDayTab() {
