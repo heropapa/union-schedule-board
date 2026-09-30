@@ -13,7 +13,8 @@
     '나중' = 파일명 끝 숫자(schedule-v2-…_<숫자>.xlsx 의 내보낸 시각), 없으면 파일 수정 시각.
   - 한 사람이 두 캠프에 등록돼 하루 2줄(예: 부산2 휴무 + 부산3 출근)이면 '출근' 줄이 실제 근무.
     같은 날 두 캠프 모두 출근이면 중단.
-  - 사람은 출근을 더 많이 한 캠프 아래에 한 번만 나옴. 다른 캠프 라우트를 뛴 날은 칸에 그 캠프를 작게 표시.
+  - 사람은 그 주에 출근을 더 많이 한 캠프 아래에 한 번만 나옴. 다른 캠프 라우트를 뛴 날은 칸에 그 캠프를 작게 표시.
+  - 주(일~토)마다 따로 묶음 → 다음 주 파일을 추가해도 이미 올린 주의 사람 목록·순서는 그대로.
   - 회전이 '1회전,2회전'(전체)이 아니면 칸에 '2회전' 처럼 작게 표시 (한 라우트를 둘이 나눠 뛴 날).
 
 ■ 매주 절차
@@ -131,6 +132,37 @@ def main():
         fail(f'{"·".join(CAMPS)} {WAVE}(주간) 행이 하나도 없음')
     dates = sorted(by_date)
 
+    # 주(일~토)별로 따로: 사람 목록·순서·두 캠프 등록자 위치는 그 주 데이터로만 정함
+    #   → 다음 주 파일을 추가해도 이미 올린 주의 모양이 바뀌지 않음
+    def sunday(d):
+        x = datetime.date.fromisoformat(d)
+        return (x - datetime.timedelta(days=(x.weekday() + 1) % 7)).isoformat()
+    week_dates = {}
+    for d in dates:
+        week_dates.setdefault(sunday(d), []).append(d)
+    weeks_out = [build_week(wd, by_date) for _, wd in sorted(week_dates.items())]
+
+    # 날짜가 이어지지 않으면 안내만 (빠진 주가 있을 수 있음)
+    d0 = datetime.date.fromisoformat(dates[0])
+    gaps = [(d0 + datetime.timedelta(days=i)).isoformat() for i in range((datetime.date.fromisoformat(dates[-1]) - d0).days + 1)]
+    gaps = [d for d in gaps if d not in by_date]
+    if gaps:
+        print(f'   (참고) 빠진 날 {len(gaps)}일: {gaps[0]} ~ {gaps[-1]} 등 — 그 주는 게시판에 없음으로 나옴')
+
+    for w in weeks_out:
+        print(f"[주] {w['dates'][0]} ~ {w['dates'][-1]} | " + ' · '.join(f"{c['name']} {len(c['people'])}명" for c in w['camps']))
+    data = {'title': '부산 주간 전체 스케쥴', 'generated': datetime.date.today().isoformat(),
+            'dates': dates, 'weeks': weeks_out}
+    with io.open(OUT, 'w', encoding='utf-8', newline='\n') as f:
+        f.write('// 자동 생성 파일 — 직접 수정하지 말고 tools/convert_day.py 로 다시 만드세요 (이름·라우트·휴무만, 아이디 없음)\n')
+        f.write('window.DAY_DATA = ')
+        json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+        f.write(';\n')
+    print(f'[저장] {OUT} ({os.path.getsize(OUT):,} bytes)')
+
+
+def build_week(dates, by_date):
+    """한 주 → {'dates': [...], 'camps': [{'name', 'people': [{'name', 'days'}]}]}"""
     # 사람·날짜별로 합치기: 출근 줄이 실제 근무
     cell, errs = {}, []
     order = {c: [] for c in CAMPS}                         # 캠프별 사람 순서 (처음 나온 순서 = 어드민 순서)
@@ -177,27 +209,9 @@ def main():
             people.append({'name': name, 'days': days})
         camps_out.append({'name': camp, 'people': people})
     if moved:
-        print(f'   (참고) 두 캠프에 등록된 사람은 출근 많은 캠프에 한 번만: '
+        print(f'   (참고) {dates[0]} 주: 두 캠프에 등록된 사람은 출근 많은 캠프에 한 번만: '
               + ', '.join(f'{n}→{home[n]}' for n in moved))
-
-    # 날짜가 이어지지 않으면 안내만 (빠진 주가 있을 수 있음)
-    d0 = datetime.date.fromisoformat(dates[0])
-    gaps = [(d0 + datetime.timedelta(days=i)).isoformat() for i in range((datetime.date.fromisoformat(dates[-1]) - d0).days + 1)]
-    gaps = [d for d in gaps if d not in by_date]
-    if gaps:
-        print(f'   (참고) 빠진 날 {len(gaps)}일: {gaps[0]} ~ {gaps[-1]} 등 — 그 주는 게시판에 없음으로 나옴')
-
-    n_people = sum(len(c['people']) for c in camps_out)
-    print(f"[결과] {dates[0]} ~ {dates[-1]} ({len(dates)}일) | " + ' · '.join(f"{c['name']} {len(c['people'])}명" for c in camps_out)
-          + f' | 총 {n_people}명')
-    data = {'title': '부산 주간 전체 스케쥴', 'generated': datetime.date.today().isoformat(),
-            'dates': dates, 'camps': camps_out}
-    with io.open(OUT, 'w', encoding='utf-8', newline='\n') as f:
-        f.write('// 자동 생성 파일 — 직접 수정하지 말고 tools/convert_day.py 로 다시 만드세요 (이름·라우트·휴무만, 아이디 없음)\n')
-        f.write('window.DAY_DATA = ')
-        json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
-        f.write(';\n')
-    print(f'[저장] {OUT} ({os.path.getsize(OUT):,} bytes)')
+    return {'dates': dates, 'camps': camps_out}
 
 
 if __name__ == '__main__':
