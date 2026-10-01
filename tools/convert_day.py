@@ -23,6 +23,8 @@
   1. 유스프에서 어드민 엑셀을 뽑을 때 그 파일을 source/day/ 에 넣는다 (이름 그대로 두면 됨).
   2. python tools/convert_day.py source/day/*.xlsx   → day-data.js 갱신
   3. git add day-data.js && git commit -m "주간 전체 스케쥴 갱신" && git push
+  야간: 파일은 source/night_admin/ → python tools/convert_day.py --night "source/night_admin/*.xlsx" → git add night-admin-data.js
+        (convert_night.py 의 --until 을 바꾸면 이것도 다시 돌려 공개 범위를 맞출 것)
 
 필요: pip install openpyxl
 """

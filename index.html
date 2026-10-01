@@ -80,7 +80,9 @@
     #dayFull { flex: 1; min-height: 0; overflow: auto; }
     /* 야간 탭: 위 보기 버튼 고정 + 아래만 스크롤 (주간과 같은 구조) */
     #night { height: 100%; }
-    .night-view { display: flex; flex-direction: column; height: 100%; max-width: 970px; margin: 0 auto; }
+    /* 스크롤 영역은 화면 전체 폭(PC 양옆 빈 곳에서 휠을 굴려도 스크롤), 버튼 줄만 가운데 970px */
+    .night-view { display: flex; flex-direction: column; height: 100%; }
+    #nightViewBar { width: 100%; max-width: 970px; margin: 0 auto; }
     #nightMain, #nightAdmin { flex: 1; min-height: 0; overflow: auto; }
     .fnote { margin-top: 10px; padding: 9px 12px; font-size: 13px; line-height: 1.5; color: #7a5b00; background: #fff8e1; border: 1px solid #f3dd9b; border-radius: 10px; }
     .fbar { position: sticky; top: 0; z-index: 5; margin: -12px -12px 0; padding: 12px 12px 10px; background: #f4f5f7; box-shadow: 0 6px 6px -6px rgba(0, 0, 0, .18); }
@@ -718,6 +720,7 @@
         }
         if (g === 'day') ensureDayTab();
         document.querySelector('main').scrollTop = 0;
+        if (g === 'night') ['nightMain', 'nightAdmin'].forEach(id => { const e = document.getElementById(id); if (e) e.scrollTop = 0; });   // 야간으로 오면 맨 위부터
     }
 
     buildDay();

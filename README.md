@@ -10,7 +10,8 @@
 | `index.html` | 게시판 화면. 상단 `[주간 \| 야간]` 전환 (선택은 기기에 기억됨) |
 | `day-data.js` | 주간 전체스케쥴(어드민) 데이터 (이름·라우트·휴무만) — **자동 생성, 직접 수정 금지** |
 | `night-data.js` | 야간 근무표 데이터 — **자동 생성, 직접 수정 금지** |
-| `tools/convert_day.py` | 주간 어드민 엑셀(유스프에서 뽑은 것) → `day-data.js` 변환 + 검증 |
+| `night-admin-data.js` | 야간 전체스케쥴(어드민) 데이터 (이름·라우트·휴무만) — **자동 생성, 직접 수정 금지** |
+| `tools/convert_day.py` | 어드민 엑셀 → `day-data.js`(주간) / `--night` 면 `night-admin-data.js`(야간) 변환 + 검증 |
 | `tools/convert_night.py` | 야간 월별 엑셀 → `night-data.js` 변환 + 검증 |
 | `tools/day_range.py` | 주간 시트 링크 → 기간(첫날~마지막날) 추출 |
 | `source/` | 원본 엑셀 보관 (**git 제외** — 쿠팡 아이디·사업자번호가 들어 있어 공개 repo에 올리면 안 됨) |
@@ -40,6 +41,14 @@ python tools/day_range.py "<구글시트 웹에 게시 링크>"
 ```
 → `{ from: '2026-10-11', to: '2026-11-07', url: '...' }` 형태로 출력되고, 탭 이름은 `10/11~11/7`로 표시됩니다.
 오늘 날짜가 들어있는 기간의 탭이 자동으로 열립니다.
+
+**야간 전체스케쥴(어드민)** — 야간 어드민 엑셀(쿠팡 내보내기 또는 수정본)을 `source/night_admin/`에 넣고:
+```
+python tools/convert_day.py --night "source/night_admin/*.xlsx"
+git add night-admin-data.js && git commit -m "야간 전체스케쥴(어드민) 갱신" && git push
+```
+- 야간 탭 위 `[야간 근무표 | 전체스케쥴(어드민)]`. 캠프별(부산2·부산3) 사람 × 요일, 머리글 입차/PDD 두 줄.
+- 공개 범위는 `night-data.js`의 `until`을 따름 → **convert_night.py 의 `--until`을 바꾸면 이 명령도 다시 돌릴 것** (두 화면 범위를 맞추려고).
 
 **야간** — 새 월별 엑셀(+어드민 양식 zip)을 받으면:
 ```
