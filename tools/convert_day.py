@@ -3,7 +3,9 @@
 
 사용법:
   python tools/convert_day.py <어드민.xlsx> [<어드민2.xlsx> ...]
-  예) python tools/convert_day.py source/day/*.xlsx
+  예) python tools/convert_day.py "source/day/*.xlsx"
+  야간) python tools/convert_day.py --night "source/night_admin/*.xlsx"   → night-admin-data.js
+        (WAVE1, 회전 D1,D2,F3. 공개 범위는 night-data.js 의 until 을 그대로 따름 — 그 뒤 날짜는 안 올림)
 
   - 입력: 유스프에서 뽑은 어드민 업로드용 엑셀, 또는 쿠팡 어드민 '엑셀 다운로드'(schedule-v2-…xlsx).
     머리행: 업무일 | 벤더명 | 사업자등록번호 | 캠프명 | 웨이브 | 이름 | 아이디 | 업무상태 | 회전 | 업무라우트
@@ -39,7 +41,7 @@ NEED = ['업무일', '캠프명', '웨이브', '이름', '업무상태', '회전
 
 
 def fail(msg, items=()):
-    print(f'[중단] {msg} — day-data.js를 쓰지 않았습니다.')
+    print(f'[중단] {msg} — {os.path.basename(OUT)}를 쓰지 않았습니다.')
     for x in list(items)[:30]:
         print('   ✗', x)
     if len(items) > 30:
@@ -110,8 +112,20 @@ def load(path):
 
 
 def main():
+    global WAVE, FULL_ROT, OUT
+    args = sys.argv[1:]
+    night = '--night' in args
+    args = [a for a in args if a != '--night']
+    until = None
+    if night:                                              # 야간: WAVE1, 회전 D1,D2,F3, 공개 범위 = night-data.js until
+        WAVE, FULL_ROT = 'WAVE1', {'', 'D1,D2,F3'}
+        OUT = os.environ.get('NIGHT_ADMIN_OUT') or os.path.join(ROOT, 'night-admin-data.js')
+        nd = os.path.join(ROOT, 'night-data.js')
+        if os.path.exists(nd):
+            s = io.open(nd, encoding='utf-8').read()
+            until = json.loads(s[s.index('=') + 1:].strip().rstrip(';')).get('until')
     paths = []
-    for a in sys.argv[1:]:
+    for a in args:
         paths += sorted(glob.glob(a)) if any(c in a for c in '*?[') else [a]
     paths = [p for p in paths if p.lower().endswith('.xlsx') and not os.path.basename(p).startswith('~$')]
     if not paths:
@@ -129,7 +143,15 @@ def main():
         print(f"[읽음] {os.path.basename(p)} | {ds[0]} ~ {ds[-1]} ({len(ds)}일, {len(rows)}줄)"
               + (f' | 이전 파일의 {len(replaced)}일을 대체' if replaced else '') if ds else f'[읽음] {os.path.basename(p)} | 해당 행 없음')
     if not by_date:
-        fail(f'{"·".join(CAMPS)} {WAVE}(주간) 행이 하나도 없음')
+        fail(f'{"·".join(CAMPS)} {WAVE}({"야간" if night else "주간"}) 행이 하나도 없음')
+    if until:
+        cut = sorted(d for d in by_date if d > until)
+        for d in cut:
+            del by_date[d]
+        if cut:
+            print(f'[공개 범위] 야간 게시판과 같이 PDD {until}까지만 — {cut[0]} ~ {cut[-1]} ({len(cut)}일)은 안 올림')
+        if not by_date:
+            fail(f'공개 범위(PDD {until}) 안의 날짜가 없음')
     dates = sorted(by_date)
 
     # 주(일~토)별로 따로: 사람 목록·순서·두 캠프 등록자 위치는 그 주 데이터로만 정함
@@ -151,11 +173,13 @@ def main():
 
     for w in weeks_out:
         print(f"[주] {w['dates'][0]} ~ {w['dates'][-1]} | " + ' · '.join(f"{c['name']} {len(c['people'])}명" for c in w['camps']))
-    data = {'title': '부산 주간 전체 스케쥴', 'generated': datetime.date.today().isoformat(),
+    data = {'title': f'부산 {"야간" if night else "주간"} 전체 스케쥴(어드민)', 'generated': datetime.date.today().isoformat(),
             'dates': dates, 'weeks': weeks_out}
+    if until:
+        data['until'] = until
     with io.open(OUT, 'w', encoding='utf-8', newline='\n') as f:
-        f.write('// 자동 생성 파일 — 직접 수정하지 말고 tools/convert_day.py 로 다시 만드세요 (이름·라우트·휴무만, 아이디 없음)\n')
-        f.write('window.DAY_DATA = ')
+        f.write(f'// 자동 생성 파일 — 직접 수정하지 말고 tools/convert_day.py{" --night" if night else ""} 로 다시 만드세요 (이름·라우트·휴무만, 아이디 없음)\n')
+        f.write(f'window.{"NIGHT_ADMIN" if night else "DAY_DATA"} = ')
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
         f.write(';\n')
     print(f'[저장] {OUT} ({os.path.getsize(OUT):,} bytes)')
