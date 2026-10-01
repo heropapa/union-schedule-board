@@ -78,6 +78,12 @@
     .dfoot { margin: 10px 2px 16px; font-size: 11.5px; line-height: 1.6; color: #999; }
     /* 전체 스케쥴: 쿠팡 어드민처럼 캠프별 사람 × 요일 (야간 표와 같은 모양) */
     #dayFull { flex: 1; min-height: 0; overflow: auto; }
+    /* 야간 탭: 위 보기 버튼 고정 + 아래만 스크롤 (주간과 같은 구조) */
+    #night { height: 100%; }
+    /* 스크롤 영역은 화면 전체 폭(PC 양옆 빈 곳에서 휠을 굴려도 스크롤), 버튼 줄만 가운데 970px */
+    .night-view { display: flex; flex-direction: column; height: 100%; }
+    #nightViewBar { width: 100%; max-width: 970px; margin: 0 auto; }
+    #nightMain, #nightAdmin { flex: 1; min-height: 0; overflow: auto; }
     .fnote { margin-top: 10px; padding: 9px 12px; font-size: 13px; line-height: 1.5; color: #7a5b00; background: #fff8e1; border: 1px solid #f3dd9b; border-radius: 10px; }
     .fbar { position: sticky; top: 0; z-index: 5; margin: -12px -12px 0; padding: 12px 12px 10px; background: #f4f5f7; box-shadow: 0 6px 6px -6px rgba(0, 0, 0, .18); }
     .fbar .n-bar { margin-bottom: 0; }
@@ -181,11 +187,18 @@
             <div id="dayFull" hidden></div>
         </div>
     </section>
-    <section id="night" hidden></section>
+    <section id="night" hidden>
+        <div class="night-view">
+            <div class="dvbar solo" id="nightViewBar" hidden></div>
+            <div id="nightMain"></div>
+            <div id="nightAdmin" hidden></div>
+        </div>
+    </section>
 </main>
 
 <script src="night-data.js"></script>
 <script src="day-data.js"></script>
+<script src="night-admin-data.js"></script>
 <script>
 (function () {
     // ===================== 여기만 고치면 됩니다 =====================
@@ -214,6 +227,7 @@
     const WD = ['일', '월', '화', '수', '목', '금', '토'];
     const md = s => { const d = dateOf(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
     const mdw = s => `${md(s)}(${WD[dateOf(s).getDay()]})`;
+    const addDays = (s, n) => { const x = dateOf(s); x.setDate(x.getDate() + n); return isoOf(x); };
     DAY_SHEETS.sort((a, b) => (a.from < b.from ? -1 : 1));
 
     // ------------------------- 주간 -------------------------
@@ -440,24 +454,24 @@
         loadDay(i).then(() => renderDay(i, true));
     });
 
-    // ---- 전체 스케쥴 (어드민처럼 캠프별 사람 × 요일, 주 단위) ----
-    // 주마다 따로 저장됨 (사람 목록·순서·두 캠프 등록자 위치는 그 주 데이터로만 → 다음 주가 추가돼도 이미 올린 주는 그대로)
-    const fullWeeks = DD ? DD.weeks : [];
-    let fullWi = -1, fullHome = -1, fullNoToday = false;
-    if (DD) {
-        const hit = fullWeeks.findIndex(w => w.dates.includes(TODAY));
-        fullHome = hit >= 0 ? hit : (TODAY < fullWeeks[0].dates[0] ? 0 : fullWeeks.length - 1);
-        fullNoToday = hit < 0;
-        fullWi = fullHome;
+    // ---- 전체스케쥴(어드민): 쿠팡 어드민처럼 캠프별 사람 × 요일, 주 단위 — 주간·야간 공용 ----
+    // DATA = {dates, weeks:[{dates, camps:[{name, people:[{name, days}]}]}]} — 주마다 따로 저장됨
+    //   (사람 목록·순서·두 캠프 등록자 위치는 그 주 데이터로만 → 다음 주가 추가돼도 이미 올린 주는 그대로)
+    // night: 날짜 = PDD → 머리글 입차/PDD 두 줄, '오늘' = 오늘 저녁 입차하는 칸(PDD 내일)
+    function makeFull(el, DATA, night) {
+        const weeks = DATA.weeks, key = night ? addDays(TODAY, 1) : TODAY;
+        const hit = weeks.findIndex(w => w.dates.includes(key));
+        const home = hit >= 0 ? hit : (key < weeks[0].dates[0] ? 0 : weeks.length - 1);
+        const sun = addDays(key, -dateOf(key).getDay()), sat = addDays(sun, 6);
+        let wi = home;
+        const render = () => renderFull(el, DATA, night, weeks, wi, home, hit < 0, key, sun, sat, n => { wi = n; render(); el.scrollTop = 0; });
+        return { render, get built() { return el.dataset.wi != null; } };
     }
-    const thisSun = (() => { const x = dateOf(TODAY); x.setDate(x.getDate() - x.getDay()); return isoOf(x); })();
-    const thisSat = (() => { const x = dateOf(thisSun); x.setDate(x.getDate() + 6); return isoOf(x); })();
-    function renderFull() {
-        const el = document.getElementById('dayFull');
+    function renderFull(el, DATA, night, fullWeeks, fullWi, fullHome, fullNoToday, key, thisSun, thisSat, go) {
         const W = fullWeeks[fullWi], days = W.dates, idx = {};
         days.forEach((d, k) => { idx[d] = k; });
-        const dlab = s => { const x = dateOf(s); return `<span class="d">${dnum(s)}${x.getDate() === 1 ? '' : '일'}</span><span class="w">(${WD[x.getDay()]})</span>`; };
-        const tc = d => (d === TODAY ? ' today' : '');
+        const lab = s => { const x = dateOf(s); return `<span class="d">${dnum(s)}${x.getDate() === 1 ? '' : '일'}</span><span class="w">(${WD[x.getDay()]})</span>`; };
+        const tc = d => (d === key ? ' today' : '');
         let body = '';
         W.camps.forEach(c => {
             const cnt = days.map(d => {   // 출근 = 그날 이 캠프 라우트를 뛴 사람 (어드민 숫자와 같음), 휴 = 이 캠프 사람 중 휴무
@@ -477,38 +491,49 @@
                 body += `<tr><td class="name"><b>${esc(p.name)}</b></td>${cells}</tr>`;
             });
         });
-        const top = el.scrollTop;
+        const ip = d => addDays(d, -1);   // 야간: 입차 = PDD 전날
+        const camps = W.camps.map(c => `${esc(c.name)} ${c.people.length}명`).join(' · ');
+        const range = night
+            ? `입차 ${md(ip(days[0]))} ~ ${md(ip(days[days.length - 1]))}<small>PDD ${md(days[0])} ~ ${md(days[days.length - 1])} · ${camps}</small>`
+            : `${md(days[0])} ~ ${md(days[days.length - 1])}<small>${camps}</small>`;
+        const head = night
+            ? `<tr class="ip"><th class="name">입차</th>${days.map(d => `<th class="${tc(d).trim()}">${lab(ip(d))}</th>`).join('')}</tr>
+               <tr class="pdd"><th class="name">PDD</th>${days.map(d => `<th class="${tc(d).trim()}">${lab(d)}</th>`).join('')}</tr>`
+            : `<tr><th class="name">이름</th>${days.map(d => `<th class="${tc(d).trim()}">${lab(d)}</th>`).join('')}</tr>`;
+        const first = DATA.dates[0], last = DATA.dates[DATA.dates.length - 1];
         el.innerHTML = `
             <div class="dwrap">
                 <div class="fbar"><div class="n-bar">
                     <button type="button" class="nav" data-go="-1" aria-label="이전 주"${fullWi === 0 ? ' disabled' : ''}>◀</button>
-                    <span class="wk">${md(days[0])} ~ ${md(days[days.length - 1])}<small>${W.camps.map(c => `${esc(c.name)} ${c.people.length}명`).join(' · ')}</small></span>
+                    <span class="wk">${range}</span>
                     <button type="button" class="nav" data-go="1" aria-label="다음 주"${fullWi === fullWeeks.length - 1 ? ' disabled' : ''}>▶</button>
                     ${fullWi !== fullHome ? '<button type="button" class="todaybtn" data-go="home">이번 주</button>' : ''}
                 </div></div>
-                ${fullNoToday ? `<div class="fnote">이번 주(${md(thisSun)} ~ ${md(thisSat)}) 전체스케쥴(어드민)은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 휴무백업표를 봐 주세요.</div>` : ''}
+                ${fullNoToday ? `<div class="fnote">${night
+                    ? `이번 주(입차 ${md(ip(thisSun))} ~ ${md(ip(thisSat))} · PDD ${md(thisSun)} ~ ${md(thisSat)}) 전체스케쥴(어드민)은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 야간 근무표를 봐 주세요.`
+                    : `이번 주(${md(thisSun)} ~ ${md(thisSat)}) 전체스케쥴(어드민)은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 휴무백업표를 봐 주세요.`}</div>` : ''}
                 <div class="tbl-wrap" style="margin-top:10px">
                     <table class="nt ft">
-                        <thead><tr><th class="name">이름</th>${days.map(d => `<th class="${tc(d).trim()}">${dlab(d)}</th>`).join('')}</tr></thead>
+                        <thead>${head}</thead>
                         <tbody>${body}</tbody>
                     </table>
                 </div>
                 <div class="legend">
                     <span><i class="chip" style="background:#ffe3e6;border:1px solid #f5a3ad"></i>휴무</span>
-                    <span><b style="font-size:11px">2회전</b> 한 라우트를 나눠 뛴 날</span>
+                    <span><b style="font-size:11px">${night ? 'D1' : '2회전'}</b> 한 라우트를 나눠 뛴 날</span>
                     <span><b style="font-size:11px;color:#6a4c93">부산2</b> 다른 캠프 라우트</span>
                 </div>
-                <div class="dfoot">쿠팡 어드민 스케쥴(유스프에서 뽑은 엑셀) 기준 · ${md(DD.dates[0])} ~ ${md(DD.dates[DD.dates.length - 1])} 등록 · 라우트는 516C,516D → 516CD 처럼 줄여 표시 · 두 캠프에 등록된 사람은 출근이 많은 캠프에 한 번만</div>
+                <div class="dfoot">${night
+                    ? `쿠팡 어드민 야간 스케쥴 기준 · PDD ${md(first)} ~ ${md(last)} 등록 (입차는 그 전날 저녁) · 야간 근무표와 같은 공개 범위`
+                    : `쿠팡 어드민 스케쥴(유스프에서 뽑은 엑셀) 기준 · ${md(first)} ~ ${md(last)} 등록`} · 라우트는 ${night ? '520B,520C,520D → 520BCD' : '516C,516D → 516CD'} 처럼 줄여 표시 · 두 캠프에 등록된 사람은 그 주에 출근이 많은 캠프에 한 번만</div>
             </div>`;
         el.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
             const g = b.dataset.go;
-            fullWi = g === 'home' ? fullHome : Math.max(0, Math.min(fullWeeks.length - 1, fullWi + Number(g)));
-            renderFull();
-            el.scrollTop = 0;
+            go(g === 'home' ? fullHome : Math.max(0, Math.min(fullWeeks.length - 1, fullWi + Number(g))));
         }));
         el.dataset.wi = String(fullWi);
-        if (el.dataset.keep) el.scrollTop = top;
     }
+    const dayFull = DD ? makeFull(document.getElementById('dayFull'), DD, false) : null;
 
     function buildDayViews() {
         const bar = document.getElementById('dayViewBar');
@@ -533,7 +558,7 @@
         document.getElementById('dayFrames').hidden = full;
         document.getElementById('dayFull').hidden = !full;
         if (full) {
-            if (document.getElementById('dayFull').dataset.wi == null) renderFull();
+            if (!dayFull.built) dayFull.render();
             return;
         }
         if (dayCur < 0) return;
@@ -542,8 +567,37 @@
     }
 
     // ------------------------- 야간 -------------------------
+    // 야간 보기: [야간 근무표 | 전체스케쥴(어드민)] — 어드민 데이터(night-admin-data.js)가 있을 때만 버튼이 보임
+    const NA = window.NIGHT_ADMIN && window.NIGHT_ADMIN.weeks && window.NIGHT_ADMIN.weeks.length ? window.NIGHT_ADMIN : null;
+    const nightFull = NA ? makeFull(document.getElementById('nightAdmin'), NA, true) : null;
+    let nightView = NA && store.get('night.view') === 'admin' ? 'admin' : 'main';
+    function buildNightViews() {
+        if (!NA) return;
+        const bar = document.getElementById('nightViewBar');
+        bar.hidden = false;
+        bar.innerHTML = `<div class="dview" role="tablist" aria-label="보기 방식">
+            <button type="button" data-v="main">야간 근무표</button><button type="button" data-v="admin">전체스케쥴(어드민)</button></div>`;
+        bar.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => {
+            if (b.dataset.v === nightView) return;
+            nightView = b.dataset.v;
+            store.set('night.view', nightView);
+            applyNightView();
+        }));
+        applyNightView();
+    }
+    function applyNightView() {
+        document.querySelectorAll('#nightViewBar [data-v]').forEach(b => {
+            const on = b.dataset.v === nightView;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-selected', on);
+        });
+        document.getElementById('nightMain').hidden = nightView !== 'main';
+        document.getElementById('nightAdmin').hidden = nightView !== 'admin';
+        if (nightView === 'admin' && !nightFull.built) nightFull.render();
+    }
+
     function buildNight() {
-        const root = document.getElementById('night');
+        const root = document.getElementById('nightMain');
         const D = window.NIGHT_DATA;
         if (!D || !D.dates || !D.dates.length) {
             root.innerHTML = '<div class="night"><div class="summary">야간 근무표를 불러오지 못했습니다.</div></div>';
@@ -666,13 +720,15 @@
         }
         if (g === 'day') ensureDayTab();
         document.querySelector('main').scrollTop = 0;
+        if (g === 'night') ['nightMain', 'nightAdmin'].forEach(id => { const e = document.getElementById(id); if (e) e.scrollTop = 0; });   // 야간으로 오면 맨 위부터
     }
 
     buildDay();
     buildDayViews();
     try { buildNight(); } catch (e) {
-        document.getElementById('night').innerHTML = '<div class="night"><div class="summary">야간 근무표를 표시하지 못했습니다.</div></div>';
+        document.getElementById('nightMain').innerHTML = '<div class="night"><div class="summary">야간 근무표를 표시하지 못했습니다.</div></div>';
     }
+    try { buildNightViews(); } catch (e) {}
     document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setGroup(b.dataset.g, true)));
     setGroup(initialGroup(), false);
     window.addEventListener('resize', () => {
