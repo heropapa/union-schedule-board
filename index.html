@@ -84,11 +84,6 @@
     .night-view { display: flex; flex-direction: column; height: 100%; }
     #nightViewBar { width: 100%; max-width: 970px; margin: 0 auto; }
     #nightMain, #nightAdmin { flex: 1; min-height: 0; overflow: auto; }
-    .notice { margin-bottom: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.55; color: #5c4400; background: #fff8e1; border: 1px solid #f3dd9b; border-radius: 10px; word-break: keep-all; overflow-wrap: break-word; }   /* 공지 (notices.js) — 한글은 단어 단위 줄바꿈 */
-    .notice b { display: block; margin-bottom: 4px; font-size: 13.5px; color: #3d2d00; }
-    .notice ul { margin: 0; padding-left: 16px; }
-    .notice li + li { margin-top: 3px; }
-    .dwrap .notice { margin: 10px 0 0; }
     .fnote { margin-top: 10px; padding: 9px 12px; font-size: 13px; line-height: 1.5; color: #7a5b00; background: #fff8e1; border: 1px solid #f3dd9b; border-radius: 10px; }
     .fbar { position: sticky; top: 0; z-index: 5; margin: -12px -12px 0; padding: 12px 12px 10px; background: #f4f5f7; box-shadow: 0 6px 6px -6px rgba(0, 0, 0, .18); }
     .fbar .n-bar { margin-bottom: 0; }
@@ -204,7 +199,6 @@
 <script src="night-data.js"></script>
 <script src="day-data.js"></script>
 <script src="night-admin-data.js"></script>
-<script src="notices.js"></script>
 <script>
 (function () {
     // ===================== 여기만 고치면 됩니다 =====================
@@ -234,15 +228,6 @@
     const md = s => { const d = dateOf(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
     const mdw = s => `${md(s)}(${WD[dateOf(s).getDay()]})`;
     const addDays = (s, n) => { const x = dateOf(s); x.setDate(x.getDate() + n); return isoOf(x); };
-    // 공지 (notices.js): 그룹별, from~to(오늘 날짜, YYYY-MM-DD) 안의 것만. 공지가 잘못 써져도 표는 그대로 나오게
-    const okDate = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
-    const NOTICES = (Array.isArray(window.NOTICES) ? window.NOTICES : []).filter(n => n && okDate(n.from) && okDate(n.to) && n.from <= TODAY && TODAY <= n.to);
-    const noticeHtml = g => {
-        try {
-            return NOTICES.filter(n => n.g === g).map(n =>
-                `<div class="notice" role="note"><b>${esc(n.title || '공지')}</b><ul>${[].concat(n.lines == null ? [] : n.lines).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('');
-        } catch (e) { return ''; }
-    };
     DAY_SHEETS.sort((a, b) => (a.from < b.from ? -1 : 1));
 
     // ------------------------- 주간 -------------------------
@@ -527,7 +512,6 @@
                 ${fullNoToday ? `<div class="fnote">${night
                     ? `이번 주(입차 ${md(ip(thisSun))} ~ ${md(ip(thisSat))} · PDD ${md(thisSun)} ~ ${md(thisSat)}) 전체스케쥴(어드민)은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 야간 근무표를 봐 주세요.`
                     : `이번 주(${md(thisSun)} ~ ${md(thisSat)}) 전체스케쥴(어드민)은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 휴무백업표를 봐 주세요.`}</div>` : ''}
-                ${night ? noticeHtml('night') : ''}
                 <div class="tbl-wrap" style="margin-top:10px">
                     <table class="nt ft">
                         <thead>${head}</thead>
@@ -690,7 +674,6 @@
                     ${wi !== homeWeek ? '<button type="button" class="todaybtn" id="nToday">이번 주</button>' : ''}
                 </div>
                 <div class="summary">${summary()}</div>
-                ${noticeHtml('night')}
                 <div class="tbl-wrap">
                     <table class="nt">
                         <thead>
