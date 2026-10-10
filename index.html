@@ -648,8 +648,10 @@
             const headPdd = days.map(d => `<th${tcls(d)}>${dlab(d)}</th>`).join('');
             let body = '';
             D.teams.forEach(t => {
+                const ppl = t.people.filter(p => days.some(d => valOf(p, d) != null));   // 그 주에 칸이 하나도 없는 사람(입사 전·퇴사 후)은 줄째 뺌
+                if (!ppl.length) return;
                 body += `<tr class="team"><td colspan="${days.length + 1}">${esc(t.name)}</td></tr>`;
-                t.people.forEach(p => {
+                ppl.forEach(p => {
                     const cells = days.map(d => {
                         const v = valOf(p, d);
                         const cls = [];
