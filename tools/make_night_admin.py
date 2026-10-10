@@ -3,8 +3,15 @@
 
 사용법:
   python tools/make_night_admin.py <PDD 시작일 YYYY-MM-DD> [<PDD 끝일>] [--out <폴더>]
+                                   [--existing <어드민에 이미 들어간 엑셀>] [--swap <날짜>:<실제 기사>><아이디 주인>]...
   예) python tools/make_night_admin.py 2026-10-11              → 10/11~10/17 (7일)
       python tools/make_night_admin.py 2026-10-12 2026-10-17   → 그 기간만 (마감 지난 날 빼고 올릴 때)
+      python tools/make_night_admin.py 2026-10-12 2026-10-17 --existing 어드민_1011.xlsx --swap 2026-10-17:김정철>임종수
+
+- **주 6일 검사(쿠팡 규칙: 일~토 한 주에 6일 넘게 입차 불가)**: 만드는 날짜 + --existing 파일의 같은 주 다른 날(이미 마감돼
+  어드민에 들어간 날)을 합쳐 아이디별 출근일을 셈 → 7일 이상이면 중단하고 타인아이디 후보(그날 쉬고 그 주 5일 이하)를 보여 줌.
+- **타인아이디(--swap)**: 그날 '실제 기사'의 근무를 '아이디 주인' 줄로 올림(아이디 주인은 그날 휴무여야 함, 실제 기사는 휴무로).
+  어드민엔 아이디 주인 이름으로 들어감 — 정산 때 실제 기사 앞으로 이관할 것(source/day/타인아이디_메모.md 처럼 기록).
 
 - 기준 데이터: source/수정이력.md 의 재생성 명령과 같은 입력(월별 수정본 + 15주 어드민 zip + 9/27~10/3 어드민 수정본)으로
   convert_night.py 를 공개 범위 제한 없이 돌린 결과 (임시 파일에만, night-data.js 는 안 건드림).
@@ -32,8 +39,15 @@ CAMP_ORDER = {'부산2': 0, '부산3': 1}
 def main():
     args = sys.argv[1:]
     out_dir = os.path.join(S, 'night_admin_upload')
+    existing, swaps = None, []
     if '--out' in args:
         i = args.index('--out'); out_dir = args[i + 1]; del args[i:i + 2]
+    if '--existing' in args:
+        i = args.index('--existing'); existing = args[i + 1]; del args[i:i + 2]
+    while '--swap' in args:
+        i = args.index('--swap'); m = re.fullmatch(r'(\d{4}-\d{2}-\d{2}):(.+)>(.+)', args[i + 1])
+        if not m: raise SystemExit(f"--swap 형식: 날짜:실제기사>아이디주인 (받은 값 '{args[i + 1]}')")
+        swaps.append(m.groups()); del args[i:i + 2]
     if not args:
         raise SystemExit(__doc__)
     d0 = datetime.date.fromisoformat(args[0])
@@ -102,6 +116,44 @@ def main():
     if bad:
         raise SystemExit(f'[중단] 규칙이 기존 15주 양식과 다름: {bad[:5]}')
     print(f'[규칙 확인] 기존 15주 양식 {total}줄 그대로 재현')
+
+    # 타인아이디 (규칙 검증이 끝난 뒤에 적용 — 기존 15주 양식 재현 검사엔 영향 없게)
+    swapped = []
+    for d, real, owner in swaps:                       # 타인아이디: 실제 기사 근무를 아이디 주인 줄로
+        if d not in dates: raise SystemExit(f'[중단] --swap 날짜 {d} 가 만드는 기간 밖')
+        v = val.get((real, d))
+        if v in (None, '휴'): raise SystemExit(f'[중단] --swap {d} {real} 은 그날 근무가 아님 ({v})')
+        if val.get((owner, d)) != '휴': raise SystemExit(f'[중단] --swap {d} 아이디 주인 {owner} 가 그날 휴무가 아님 ({val.get((owner, d))})')
+        val[(owner, d)], val[(real, d)] = v, '휴'
+        swapped.append(f'{d} {real}의 {v} → {owner} 아이디')
+    # 주 6일 검사 (일~토, 아이디 = 어드민 줄 이름 기준). 만드는 날 + --existing 의 같은 주 다른 날
+    def sunday(d):
+        x = datetime.date.fromisoformat(d); return (x - datetime.timedelta(days=(x.weekday() + 1) % 7)).isoformat()
+    work = {}                                          # (이름, 주) → 출근 날짜들
+    for (c, _, _, d, n, stt, rot, rt) in rows_for(dates):
+        if stt == '출근': work.setdefault((n, sunday(d)), set()).add(d)
+    ex_days = set()
+    if existing:
+        ew = openpyxl.load_workbook(existing, read_only=True, data_only=True).worksheets[0]
+        er = list(ew.iter_rows(values_only=True)); ex = {h: i for i, h in enumerate(er[0])}
+        for x in er[1:]:
+            if not x[ex['이름']]: continue
+            d = x[ex['업무일']]; d = d.date().isoformat() if hasattr(d, 'date') else str(d)
+            if d in dates or sunday(d) not in {sunday(y) for y in dates}: continue   # 만드는 날은 새 값으로 대체
+            ex_days.add(d)
+            if x[ex['업무상태']] == '출근': work.setdefault((x[ex['이름']], sunday(d)), set()).add(d)
+    over = {k: sorted(v) for k, v in work.items() if len(v) > 6}
+    if ex_days: print(f'[주 6일 검사] 어드민에 이미 있는 날 {sorted(ex_days)} 포함해서 셈')
+    for s_ in swapped: print('[타인아이디]', s_)
+    if over:
+        print('[중단] 주 6일 초과 — 쿠팡 어드민이 받지 않음:')
+        for (n, wk), ds in over.items():
+            print(f'   {n} ({wk} 주) {len(ds)}일: {", ".join(x[5:] for x in ds)}')
+            for d in [x for x in ds if x in dates]:
+                cands = [m for _, m in order if val.get((m, d)) == '휴' and len(work.get((m, wk), set())) <= 5]
+                print(f'      {d[5:]} 타인아이디 후보(그날 휴무·그 주 5일 이하): {cands or "없음"}')
+        raise SystemExit(1)
+    print('[주 6일 검사] 통과 (아이디별 그 주 최대', max((len(v) for v in work.values()), default=0), '일)')
 
     # 생성 (zip 업로드 파일을 틀로)
     tpl = openpyxl.load_workbook(io.BytesIO(z.read(tpl_name)))
