@@ -394,6 +394,65 @@ def trim_until(dates, teams, until, layouts):
     return dates[:n], out_teams, dropped
 
 
+# 인원·라우트 변경: 월별 근무표 엑셀은 그대로 두고 그 날짜(PDD)부터 덮어씀 (어드민 zip 대조가 끝난 뒤 적용)
+#   NIGHT_NO_CHANGES=1 이면 건너뜀 — make_night_admin.py 가 기존 15주 양식 재현을 검사할 때
+CHANGES = [
+    # PDD 10/15(10/14 저녁 입차)부터: 전윤성 퇴사 → 그 자리(같은 휴무 패턴)에 박경태. 708C 는 708A 에 붙음
+    {'from': '2026-10-15', 'out': '전윤성', 'in': '박경태', 'routes': {'708CD': '708D', '708A': '708AC'},
+     'note': 'PDD 10/15(10/14 입차)부터 박경태 708D(전윤성 자리) · 708A → 708AC'},
+]
+
+
+def apply_changes(dates, teams):
+    """CHANGES 적용 → 바뀐 내용 안내 문구 목록. 규칙에 없는 라우트 조합(예: 708AB)이 그날 이후에 있으면 중단."""
+    if os.environ.get('NIGHT_NO_CHANGES'):
+        return []
+    notes = []
+    for ch in CHANGES:
+        k = next((i for i, d in enumerate(dates) if d >= ch['from']), None)
+        if k is None:
+            continue
+        n = len(dates)
+        for t in teams:
+            for p in t['people']:
+                p['roles'] = p.get('roles') or [p['role'] if v is not None else None for v in p['days']]
+        if ch.get('out'):                               # 사람 교체: 그날부터의 칸을 새 사람에게
+            t, p = next((t, p) for t in teams for p in t['people'] if p['name'] == ch['out'])
+            q = {'name': ch['in'], 'days': [None] * k + p['days'][k:], 'roles': [None] * k + p['roles'][k:]}
+            p['days'][k:], p['roles'][k:] = [None] * (n - k), [None] * (n - k)
+            t['people'].insert(t['people'].index(p) + 1, q)
+        mp = ch.get('routes', {})
+        touched = set().union(*(expand(c) for c in mp)) if mp else set()
+        bad = []
+        def remap(v, where):
+            if v in (None, '휴') or not mp:
+                return v
+            m = re.fullmatch(r'([^()]+)(\(.+\))?', v)
+            rt, rot = m.group(1), m.group(2) or ''
+            if rt in mp:
+                return mp[rt] + rot
+            if expand(rt) & touched:
+                bad.append(f'{where}: {v}')
+            return v
+        for t in teams:
+            for p in t['people']:
+                for i in range(k, n):
+                    p['days'][i] = remap(p['days'][i], f"{p['name']} {dates[i]}")
+                    p['roles'][i] = mp.get(p['roles'][i], p['roles'][i])
+        if bad:
+            fail(f"라우트 변경 규칙 {mp} 에 없는 조합이 {ch['from']} 이후에 있음 — 규칙을 보완해야 함", bad)
+        notes.append(ch['note'])
+    for t in teams:                                     # 담당: 하나뿐이면 role 만, 바뀌면 날짜별 roles 도
+        for i, p in enumerate(t['people']):
+            used = [r for r in p.get('roles', []) if r is not None]
+            if 'roles' in p:
+                p['role'] = used[-1] if used else p.get('role')
+                if len(set(used)) <= 1:
+                    del p['roles']
+            t['people'][i] = {x: p[x] for x in ('name', 'role', 'roles', 'days') if x in p}
+    return notes
+
+
 def load_existing():
     if not os.path.exists(OUT):
         return None
@@ -465,6 +524,10 @@ def main():
         else:
             print(f'[공개 범위] --until {until} 이 근무표 끝({full_last}) 이후라 자를 것 없음')
 
+    changes = apply_changes(dates, teams)
+    for c in changes:
+        print('[인원·라우트 변경]', c)
+
     old = load_existing()
     if old and old.get('dates'):
         today = os.environ.get('NIGHT_TODAY') or datetime.date.today().isoformat()   # NIGHT_TODAY: 테스트용
@@ -489,6 +552,7 @@ def main():
         if stop and not force:
             fail('기존 게시판과 비교해 중단 (정말 의도했다면 --force)', stop)
 
+    note = ' / '.join([x for x in [note] + changes if x])
     data = {'title': title, 'note': note, 'source': ', '.join(os.path.basename(m) for m in monthly),
             'generated': datetime.date.today().isoformat(), 'dates': dates, 'teams': teams}
     if cut:
