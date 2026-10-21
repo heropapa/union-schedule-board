@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 유니온물류 구 스케쥴 게시판 | 자동배포: GitHub push → Netlify | https://gleaming-mermaid-cc23e0.netlify.app (야간: ?g=night, 링크 없으면 08~20시 주간·그 외 야간) -->
+<!-- 유니온물류 구 스케쥴 게시판 | 자동배포: GitHub push → Netlify | https://gleaming-mermaid-cc23e0.netlify.app (야간: ?g=night, 링크 없으면 08~20시 주간·그 외 야간 / 지역: ?r=거제 ?r=통영 ?r=사천, 없으면 고른 지역 또는 부산) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23,6 +23,10 @@
     .seg { flex: none; display: flex; padding: 3px; background: #eef1f4; border-radius: 999px; }
     .seg button { padding: 7px 16px; font-size: 14px; font-weight: 700; color: #555; background: transparent; border: 0; border-radius: 999px; cursor: pointer; }
     .seg button.on { background: #1976d2; color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+    /* 지역 탭: 머리글 바로 아래 한 줄 (부산 | 거제 | 통영 | 사천) — 주간/야간 파랑과 헷갈리지 않게 짙은 회색 */
+    .rtabs { flex: none; display: flex; gap: 6px; padding: 6px 12px 7px; background: #fff; border-bottom: 1px solid #dfe3e8; overflow-x: auto; }
+    .rtabs button { flex: none; padding: 5px 15px; font-size: 13.5px; font-weight: 700; color: #455a64; background: #fff; border: 1px solid #cfd4da; border-radius: 999px; cursor: pointer; }
+    .rtabs button.on { color: #fff; background: #37474f; border-color: #37474f; }
 
     main { flex: 1; min-height: 0; overflow: auto; }
     #day { height: 100%; }
@@ -76,6 +80,7 @@
     .dt tr.sec td { padding: 4px 1px; font-size: 10.5px; color: #555; background: #d9e2f3; }
     .dt tr.sec td.lab { font-size: 12px; color: #222; background: #bdd6ee; }
     .dfoot { margin: 10px 2px 16px; font-size: 11.5px; line-height: 1.6; color: #999; }
+    .upd { margin: 6px 2px 0; text-align: center; font-size: 12px; color: #78909c; }   /* 마지막 업데이트 */
     /* 전체 스케쥴: 쿠팡 어드민처럼 캠프별 사람 × 요일 (야간 표와 같은 모양) */
     #dayFull { flex: 1; min-height: 0; overflow: auto; }
     /* 야간 탭: 위 보기 버튼 고정 + 아래만 스크롤 (주간과 같은 구조) */
@@ -84,6 +89,15 @@
     .night-view { display: flex; flex-direction: column; height: 100%; }
     #nightViewBar { width: 100%; max-width: 970px; margin: 0 auto; }
     #nightMain, #nightAdmin { flex: 1; min-height: 0; overflow: auto; }
+    /* 지역(거제·통영·사천): 위 보기 버튼 고정 + 아래 표만 스크롤 (야간 탭과 같은 구조) */
+    #region { height: 100%; }
+    .region-view { display: flex; flex-direction: column; height: 100%; }
+    #regionViewBar { width: 100%; max-width: 970px; margin: 0 auto; }
+    .rpane { flex: 1; min-height: 0; overflow: auto; }
+    .ft td.name small.dup { display: block; margin-top: 1px; font-size: 10.5px; font-weight: 600; color: #888; }   /* 동명이인 꼬리표 (607A)·(1) */
+    .nt td .it:not(.rt) { white-space: normal; word-break: break-all; }   /* 610(C11) 같은 라우트 아닌 표기는 칸 안에서 줄바꿈 */
+    @media (max-width: 400px) { .nt td .it.lg { font-size: 10px; letter-spacing: -.5px; } }   /* 701ABCD 처럼 7글자 라우트 */
+    @media (max-height: 480px) { .rtabs { padding: 3px 12px; } .rtabs button { padding: 3px 12px; font-size: 12.5px; } }   /* 폰 가로 화면 */
     .fnote { margin-top: 10px; padding: 9px 12px; font-size: 13px; line-height: 1.5; color: #7a5b00; background: #fff8e1; border: 1px solid #f3dd9b; border-radius: 10px; }
     .fbar { position: sticky; top: 0; z-index: 5; margin: -12px -12px 0; padding: 12px 12px 10px; background: #f4f5f7; box-shadow: 0 6px 6px -6px rgba(0, 0, 0, .18); }
     .fbar .n-bar { margin-bottom: 0; }
@@ -177,6 +191,7 @@
         <button type="button" role="tab" data-g="night">야간</button>
     </div>
 </header>
+<nav class="rtabs" id="regionTabs" role="tablist" aria-label="지역" hidden></nav>
 
 <main>
     <section id="day" hidden>
@@ -194,11 +209,17 @@
             <div id="nightAdmin" hidden></div>
         </div>
     </section>
+    <section id="region" hidden>
+        <div class="region-view">
+            <div class="dvbar solo" id="regionViewBar" hidden></div>
+        </div>
+    </section>
 </main>
 
 <script src="night-data.js"></script>
 <script src="day-data.js"></script>
 <script src="night-admin-data.js"></script>
+<script src="region-data.js"></script>
 <script>
 (function () {
     // ===================== 여기만 고치면 됩니다 =====================
@@ -226,6 +247,9 @@
     const TODAY = isoOf(now);
     const WD = ['일', '월', '화', '수', '목', '금', '토'];
     const md = s => { const d = dateOf(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
+    // 마지막 업데이트 한 줄 (팀장들이 언제 자료인지 보게): '2026-10-21 18:38' → 10/21(수) 18:38, '2026-10-20' → 10/20(화)
+    const fmtUp = s => { const [d, t] = String(s).split(' '); return `${md(d)}(${WD[dateOf(d).getDay()]})${t ? ' ' + t : ''}`; };
+    const upLine = (s, src) => (s ? `<div class="upd">마지막 업데이트 ${fmtUp(s)}${src ? ` · ${src}` : ''}</div>` : '');
     const mdw = s => `${md(s)}(${WD[dateOf(s).getDay()]})`;
     const addDays = (s, n) => { const x = dateOf(s); x.setDate(x.getDate() + n); return isoOf(x); };
     DAY_SHEETS.sort((a, b) => (a.from < b.from ? -1 : 1));
@@ -357,7 +381,7 @@
         });
         return out.map(o => (o.t != null ? o.t : o.p + o.s.sort().join('')));
     }
-    const items = v => toks(v).map(t => `<span class="it${/^\d{3}[A-Z]+$/.test(t) ? ' rt' : ''}">${esc(t)}</span>`).join('');
+    const items = v => toks(v).map(t => `<span class="it${/^\d{3}[A-Z]+$/.test(t) ? ' rt' : ''}${t.length >= 7 ? ' lg' : ''}">${esc(t)}</span>`).join('');
     const dnum = s => { const d = dateOf(s); return d.getDate() === 1 ? md(s) : String(d.getDate()); };
 
     function tableHtml(ws) {   // 표: 시트처럼 주별(휴무자 + 백업)로 위아래 이어 붙임
@@ -458,16 +482,17 @@
     // DATA = {dates, weeks:[{dates, camps:[{name, people:[{name, days}]}]}]} — 주마다 따로 저장됨
     //   (사람 목록·순서·두 캠프 등록자 위치는 그 주 데이터로만 → 다음 주가 추가돼도 이미 올린 주는 그대로)
     // night: 날짜 = PDD → 머리글 입차/PDD 두 줄, '오늘' = 오늘 저녁 입차하는 칸(PDD 내일)
-    function makeFull(el, DATA, night) {
+    function makeFull(el, DATA, night, opts) {   // opts: 지역 화면용 문구 {miss(기간글자), foot(첫날, 끝날), cpEx}
         const weeks = DATA.weeks, key = night ? addDays(TODAY, 1) : TODAY;
         const hit = weeks.findIndex(w => w.dates.includes(key));
         const home = hit >= 0 ? hit : (key < weeks[0].dates[0] ? 0 : weeks.length - 1);
         const sun = addDays(key, -dateOf(key).getDay()), sat = addDays(sun, 6);
         let wi = home;
-        const render = () => renderFull(el, DATA, night, weeks, wi, home, hit < 0, key, sun, sat, n => { wi = n; render(); el.scrollTop = 0; });
+        const render = () => renderFull(el, DATA, night, weeks, wi, home, hit < 0, key, sun, sat, n => { wi = n; render(); el.scrollTop = 0; }, opts);
         return { render, get built() { return el.dataset.wi != null; } };
     }
-    function renderFull(el, DATA, night, fullWeeks, fullWi, fullHome, fullNoToday, key, thisSun, thisSat, go) {
+    function renderFull(el, DATA, night, fullWeeks, fullWi, fullHome, fullNoToday, key, thisSun, thisSat, go, opts) {
+        const O = opts || {};
         const W = fullWeeks[fullWi], days = W.dates, idx = {};
         days.forEach((d, k) => { idx[d] = k; });
         const lab = s => { const x = dateOf(s); return `<span class="d">${dnum(s)}${x.getDate() === 1 ? '' : '일'}</span><span class="w">(${WD[x.getDay()]})</span>`; };
@@ -488,7 +513,8 @@
                     if (!v) return `<td class="${tc(d).trim()}"></td>`;
                     return `<td class="${tc(d).trim()}">${items(v.r)}${v.t ? `<small class="rot">${esc(v.t)}</small>` : ''}${v.c ? `<small class="cp">${esc(v.c)}</small>` : ''}</td>`;
                 }).join('');
-                body += `<tr><td class="name"><b>${esc(p.name)}</b></td>${cells}</tr>`;
+                const dup = /^(.+?)(\((?:\d{3}[A-Z]|\d{1,2})\))$/.exec(p.name);   // 동명이인 꼬리표는 이름 아래 작은 글씨 (좁은 칸에서 안 잘리게)
+                body += `<tr><td class="name"><b>${esc(dup ? dup[1] : p.name)}</b>${dup ? `<small class="dup">${esc(dup[2])}</small>` : ''}</td>${cells}</tr>`;
             });
         });
         const ip = d => addDays(d, -1);   // 야간: 입차 = PDD 전날
@@ -509,7 +535,8 @@
                     <button type="button" class="nav" data-go="1" aria-label="다음 주"${fullWi === fullWeeks.length - 1 ? ' disabled' : ''}>▶</button>
                     ${fullWi !== fullHome ? '<button type="button" class="todaybtn" data-go="home">이번 주</button>' : ''}
                 </div></div>
-                ${fullNoToday ? `<div class="fnote">${night
+                ${upLine(W.updated || DATA.updated || DATA.generated, O.upSrc)}
+                ${fullNoToday ? `<div class="fnote">${O.miss ? O.miss(night ? `입차 ${md(ip(thisSun))} ~ ${md(ip(thisSat))} · PDD ${md(thisSun)} ~ ${md(thisSat)}` : `${md(thisSun)} ~ ${md(thisSat)}`) : night
                     ? `이번 주(입차 ${md(ip(thisSun))} ~ ${md(ip(thisSat))} · PDD ${md(thisSun)} ~ ${md(thisSat)}) 전체스케쥴(어드민)은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 야간 근무표를 봐 주세요.`
                     : `이번 주(${md(thisSun)} ~ ${md(thisSat)}) 전체스케쥴(어드민)은 아직 안 올라왔습니다. 위 날짜를 확인하시고, 이번 주는 휴무백업표를 봐 주세요.`}</div>` : ''}
                 <div class="tbl-wrap" style="margin-top:10px">
@@ -521,11 +548,11 @@
                 <div class="legend">
                     <span><i class="chip" style="background:#ffe3e6;border:1px solid #f5a3ad"></i>휴무</span>
                     <span><b style="font-size:11px">${night ? 'D1' : '2회전'}</b> 한 라우트를 나눠 뛴 날</span>
-                    <span><b style="font-size:11px;color:#6a4c93">부산2</b> 다른 캠프 라우트</span>
+                    ${O.cpEx === null ? '' : `<span><b style="font-size:11px;color:#6a4c93">${esc(O.cpEx || '부산2')}</b> 다른 캠프 라우트</span>`}
                 </div>
-                <div class="dfoot">${night
+                <div class="dfoot">${O.foot ? O.foot(md(first), md(last)) : `${night
                     ? `쿠팡 어드민 야간 스케쥴 기준 · PDD ${md(first)} ~ ${md(last)} 등록 (입차는 그 전날 저녁) · 야간 근무표와 같은 공개 범위`
-                    : `쿠팡 어드민 스케쥴(유스프에서 뽑은 엑셀) 기준 · ${md(first)} ~ ${md(last)} 등록`} · 라우트는 ${night ? '520B,520C,520D → 520BCD' : '516C,516D → 516CD'} 처럼 줄여 표시 · 두 캠프에 등록된 사람은 그 주에 출근이 많은 캠프에 한 번만</div>
+                    : `쿠팡 어드민 스케쥴(유스프에서 뽑은 엑셀) 기준 · ${md(first)} ~ ${md(last)} 등록`} · 라우트는 ${night ? '520B,520C,520D → 520BCD' : '516C,516D → 516CD'} 처럼 줄여 표시 · 두 캠프에 등록된 사람은 그 주에 출근이 많은 캠프에 한 번만`}</div>
             </div>`;
         el.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
             const g = b.dataset.go;
@@ -673,6 +700,7 @@
                     <button type="button" class="nav" id="nNext" aria-label="다음 주"${wi === weeks.length - 1 ? ' disabled' : ''}>▶</button>
                     ${wi !== homeWeek ? '<button type="button" class="todaybtn" id="nToday">이번 주</button>' : ''}
                 </div>
+                ${upLine(D.updated || D.generated)}
                 <div class="summary">${summary()}</div>
                 <div class="tbl-wrap">
                     <table class="nt">
@@ -699,6 +727,96 @@
         render();
     }
 
+    // ------------------------- 지역 (거제·통영·사천) -------------------------
+    // region-data.js (tools/convert_region.py): 지역마다 주간·야간 × [배송 스케줄(카톡 표, 실제 운행자) | 전체스케쥴(어드민)]
+    // 부산은 위의 기존 화면 그대로. 지역 링크: ?r=거제 / ?r=통영 / ?r=사천 (탭을 누르면 ?r 를 지우고 고른 지역을 기억)
+    const RD = (window.REGION_DATA && Array.isArray(window.REGION_DATA.regions) ? window.REGION_DATA.regions : [])
+        .filter(r => r && r.key && r.name);
+    const REGIONS = [{ key: 'busan', name: '부산' }].concat(RD);
+    const R_ALIAS = Object.create(null);
+    REGIONS.forEach(r => { R_ALIAS[r.key] = r.key; R_ALIAS[r.name] = r.key; });
+    const rkey = v => { v = String(v || '').trim(); return R_ALIAS[v] || R_ALIAS[v.toLowerCase()] || null; };
+    function initialRegion() {
+        let q = null, g = null;
+        try { const u = new URLSearchParams(location.search); q = u.get('r'); g = u.get('g'); } catch (e) {}
+        if (rkey(q)) return rkey(q);
+        if (g) return 'busan';   // 예전 부산 단톡방 링크(?g=night 등)는 고른 지역과 상관없이 부산
+        return rkey(store.get('region')) || 'busan';
+    }
+    let region = RD.length ? initialRegion() : 'busan', group = 'day';
+    const RVIEWS = [['plan', '배송 스케줄'], ['admin', '전체스케쥴(어드민)']];
+    const rpanes = {};
+    let regionView = store.get('region.view');   // 배송 스케줄/어드민 — 저장소가 막힌 브라우저에서도 바뀌게 메모리에 둠
+    const hasData = D => !!(D && Array.isArray(D.weeks) && D.weeks.length && Array.isArray(D.dates) && D.dates.length);
+    function regionOpts(rg, g, v) {
+        const night = g === 'night', lab = v === 'plan' ? '배송 스케줄' : '전체스케쥴(어드민)';
+        const W0 = rg[g][v].weeks[0];
+        return {
+            miss: rng => `이번 주(${rng}) ${esc(rg.name)} ${night ? '야간' : '주간'} ${lab}은 아직 안 올라왔습니다. 위 날짜를 확인해 주세요.`,
+            foot: (a, b) => (v === 'plan'
+                ? `카톡 배송 스케줄 표 기준 · 실제로 뛰는 사람 이름 · ${a} ~ ${b}`
+                : `쿠팡 어드민 기준 · 어드민 이름(아이디 주인) · ${a} ~ ${b}`)
+                + (night ? ' · 날짜는 PDD (입차는 그 전날 저녁)' : '') + ' · 라우트는 같은 번호끼리 줄여 표시 · 같은 이름이 둘이면 이름 뒤에 주 라우트나 번호',
+            cpEx: W0 && W0.camps.length > 1 ? W0.camps[1].name : null,
+            upSrc: v === 'plan' ? '카톡 표 반영' : '어드민 다운로드',
+        };
+    }
+    function renderRegion() {
+        const rg = RD.find(r => r.key === region);
+        if (!rg) return;
+        const bar = document.getElementById('regionViewBar');
+        const wrap = document.querySelector('#region .region-view');
+        const G = rg[group] || {};
+        const views = RVIEWS.filter(([k]) => hasData(G[k]));
+        let v = regionView;
+        if (!views.some(x => x[0] === v)) v = views.length ? views[0][0] : null;
+        bar.hidden = views.length < 2;   // 보기가 하나뿐이면(예: 사천) 버튼 막대 없이 표만
+        bar.innerHTML = views.length > 1 ? `<div class="dview" role="tablist" aria-label="보기 방식">${views.map(([k, l]) =>
+            `<button type="button" data-v="${k}" class="${k === v ? 'on' : ''}" aria-selected="${k === v}">${l}</button>`).join('')}</div>` : '';
+        bar.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => {
+            if (b.dataset.v === v) return;
+            regionView = b.dataset.v;
+            store.set('region.view', regionView);
+            renderRegion();
+        }));
+        const key = `${region}|${group}|${v || 'none'}`;
+        Object.keys(rpanes).forEach(k => { rpanes[k].hidden = k !== key; });
+        if (!rpanes[key]) {
+            const el = document.createElement('div');
+            el.className = 'rpane';
+            wrap.appendChild(el);
+            rpanes[key] = el;
+            if (v) {
+                try { makeFull(el, G[v], group === 'night', regionOpts(rg, group, v)).render(); }
+                catch (e) { el.innerHTML = '<div class="dmsg">표를 표시하지 못했습니다.</div>'; }
+            } else {
+                el.innerHTML = `<div class="dmsg">${esc(rg.name)} ${group === 'night' ? '야간' : '주간'} 스케쥴 자료가 아직 없습니다.</div>`;
+            }
+        }
+        rpanes[key].hidden = false;
+        rpanes[key].scrollTop = 0;
+    }
+    function buildRegionTabs() {
+        if (!RD.length) return;
+        const nav = document.getElementById('regionTabs');
+        nav.hidden = false;
+        nav.innerHTML = REGIONS.map(r => `<button type="button" role="tab" data-r="${esc(r.key)}">${esc(r.name)}</button>`).join('');
+        nav.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => setRegion(b.dataset.r, true)));
+    }
+    function setRegion(r, fromClick) {
+        region = rkey(r) || 'busan';
+        document.querySelectorAll('#regionTabs [data-r]').forEach(b => {
+            const on = b.dataset.r === region;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-selected', on);
+        });
+        if (fromClick) {   // 탭을 눌러 고르면 기억하고 주소의 ?r= 는 지움
+            store.set('region', region);
+            try { const u = new URL(location.href); if (u.searchParams.has('r')) { u.searchParams.delete('r'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch (e) {}
+        }
+        setGroup(group, false);
+    }
+
     // ---------------------- 주간/야간 전환 ----------------------
     // 단톡방 전용 링크: ?g=night (야간) / ?g=day (주간)
     const G_ALIAS = { day: 'day', d: 'day', '주간': 'day', night: 'night', n: 'night', '야간': 'night' };
@@ -710,19 +828,23 @@
         return h >= 8 && h < 20 ? 'day' : 'night';
     }
     function setGroup(g, fromClick) {
+        group = g;
         document.querySelectorAll('.seg button').forEach(b => {
             const on = b.dataset.g === g;
             b.classList.toggle('on', on);
             b.setAttribute('aria-selected', on);
         });
-        document.getElementById('day').hidden = g !== 'day';
-        document.getElementById('night').hidden = g !== 'night';
+        const busan = region === 'busan';
+        document.getElementById('day').hidden = !busan || g !== 'day';
+        document.getElementById('night').hidden = !busan || g !== 'night';
+        document.getElementById('region').hidden = busan;
         if (fromClick) {   // 탭을 눌러 바꾸면 주소의 ?g= 를 지움 → 새로고침·다음 날 다시 열 때도 시간 기준대로
             try { const u = new URL(location.href); if (u.searchParams.has('g')) { u.searchParams.delete('g'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch (e) {}
         }
-        if (g === 'day') ensureDayTab();
+        if (!busan) renderRegion();
+        else if (g === 'day') ensureDayTab();
         document.querySelector('main').scrollTop = 0;
-        if (g === 'night') ['nightMain', 'nightAdmin'].forEach(id => { const e = document.getElementById(id); if (e) e.scrollTop = 0; });   // 야간으로 오면 맨 위부터
+        if (busan && g === 'night') ['nightMain', 'nightAdmin'].forEach(id => { const e = document.getElementById(id); if (e) e.scrollTop = 0; });   // 야간으로 오면 맨 위부터
     }
 
     buildDay();
@@ -732,7 +854,9 @@
     }
     try { buildNightViews(); } catch (e) {}
     document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setGroup(b.dataset.g, true)));
-    setGroup(initialGroup(), false);
+    buildRegionTabs();
+    group = initialGroup();
+    setRegion(region, false);
     window.addEventListener('resize', () => {
         scaleFrames();
         if (!document.getElementById('day').hidden) ensureDayTab();
