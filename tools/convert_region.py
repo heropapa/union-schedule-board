@@ -64,7 +64,8 @@ def routes_of(text):
     out = []
     for t in re.split(r'[,.\s]+', str(text or '').strip().upper()):
         if t:
-            out.append(ROUTE_FIX.get(t, t))
+            t = ROUTE_FIX.get(t, t)
+            out += re.findall(r'\d{3}[A-Z]', t) if re.fullmatch(r'(?:\d{3}[A-Z]){2,}', t) else [t]   # 쉼표 빠진 '704D705B' → 704D, 705B
     return out
 
 
@@ -109,14 +110,16 @@ def load_admin(path, camps, wave):
 
 
 def admin_rows(camps, wave):
-    by_date = {}
+    """→ (줄, {날짜: 그 날짜를 이긴 다운로드의 내보낸 시각(초)})"""
+    by_date, when = {}, {}
     for p in sorted(glob.glob(os.path.join(SRC, 'admin', '*.xlsx')), key=cd.stamp):   # 오래된 → 최신
         if os.path.basename(p).startswith('~$'):
             continue
         rows = load_admin(p, camps, wave)
         for d in sorted({x[0] for x in rows}):
             by_date[d] = [x for x in rows if x[0] == d]
-    return [x for d in sorted(by_date) for x in by_date[d]]
+            when[d] = cd.stamp(p) / 1000
+    return [x for d in sorted(by_date) for x in by_date[d]], when
 
 
 # ---------------- 카톡 표 ① 7일 가로 블록 ----------------
@@ -189,7 +192,8 @@ def parse_daily4(ws, region, group, year):
 
 
 def plan_rows(region, group, items, name_fix):
-    merged, notes = {}, []
+    """→ (줄, {날짜: 그 날짜 줄을 준 카톡 표 파일을 source 에 넣은 시각(초) 중 가장 늦은 것})"""
+    merged, notes, src_t = {}, [], {}
     for it in items:
         path = os.path.join(SRC, 'plan', it['file'])
         if not os.path.exists(path):
@@ -211,9 +215,13 @@ def plan_rows(region, group, items, name_fix):
             if k in merged and merged[k][:6] != x[:6]:
                 notes.append(f'{x[0]} {x[2]}: {merged[k][3:6]} → {x[3:6]} (뒤 표가 이김)')
             merged[k] = x
+            src_t[k] = os.path.getmtime(path)
     for n in notes[:10]:
         print('     (참고) 표끼리 다름', n)
-    return list(merged.values())
+    when = {}
+    for k, t in src_t.items():
+        when[k[0]] = max(when.get(k[0], 0), t)
+    return list(merged.values()), when
 
 
 def disambiguate(rows):
@@ -238,7 +246,7 @@ def disambiguate(rows):
     return [(x[0], x[1], rename.get((x[2], x[6]), x[2]), x[3], x[4], x[5]) for x in rows]
 
 
-def build(rows, camps, wave, full_rot, title):
+def build(rows, camps, wave, full_rot, title, when=None):
     if not rows:
         return None
     rows = disambiguate(rows)
@@ -263,6 +271,10 @@ def build(rows, camps, wave, full_rot, title):
                 for v in pp['days']:
                     if isinstance(v, dict) and 'c' in v:
                         v['c'] = show(v['c'])
+    for w in weeks:                                         # 마지막 업데이트(주마다) — 화면에 '마지막 업데이트 10/21(수) 18:38'
+        ts = [when[d] for d in w['dates'] if when and d in when]
+        if ts:
+            w['updated'] = datetime.datetime.fromtimestamp(max(ts)).strftime('%Y-%m-%d %H:%M')
     return {'title': title, 'dates': dates, 'weeks': weeks}
 
 
@@ -281,9 +293,13 @@ def main():
             wave, full_rot = WAVES[group]
             lab = '주간' if group == 'day' else '야간'
             camps = rg[group]
-            adm = build(admin_rows(camps, wave), camps, wave, full_rot, f"{rg['name']} {lab} 전체스케쥴(어드민)")
+            arows, awhen = admin_rows(camps, wave)
+            adm = build(arows, camps, wave, full_rot, f"{rg['name']} {lab} 전체스케쥴(어드민)", awhen)
             items = [x for x in plan_cfg if x['region'] == rg['name'] and x['group'] == group]
-            pln = build(plan_rows(rg, group, items, name_fix), camps, wave, full_rot, f"{rg['name']} {lab} 배송 스케줄") if items else None
+            pln = None
+            if items:
+                prows, pwhen = plan_rows(rg, group, items, name_fix)
+                pln = build(prows, camps, wave, full_rot, f"{rg['name']} {lab} 배송 스케줄", pwhen)
             entry[group] = {'plan': pln, 'admin': adm}
             for k, v in (('배송 스케줄', pln), ('어드민', adm)):
                 if v:
