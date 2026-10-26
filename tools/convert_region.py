@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""거제·통영·사천 게시판 데이터: 쿠팡 어드민 전체 다운로드 + 카톡 배송 스케줄 표 → region-data.js
+"""거제·통영·사천·김해(바로물류) 게시판 데이터: 쿠팡 어드민 전체 다운로드 + 카톡 배송 스케줄 표 → region-data.js
 
 사용법:
   python tools/convert_region.py
@@ -43,6 +43,7 @@ REGIONS = [   # 게시판 순서. 캠프는 화면에 이 순서로
     {'key': 'geoje', 'name': '거제', 'day': ['M_거제1'], 'night': ['M_거제1']},
     {'key': 'tongyeong', 'name': '통영', 'day': ['V_통영2', 'V_통영0'], 'night': ['M_통영1']},
     {'key': 'sacheon', 'name': '사천', 'day': ['M_사천1'], 'night': ['M_사천1']},
+    {'key': 'gimhae', 'name': '김해', 'day': ['김해1', '김해2'], 'night': ['김해1', '김해2']},   # 바로물류 (10/26~)
 ]
 WAVES = {'day': ('WAVE2', {'', '1회전,2회전'}), 'night': ('WAVE1', {'', 'D1,D2,F3'})}
 ROUTE_FIX = {'0322C': '032C'}                               # 통영 표 오타
