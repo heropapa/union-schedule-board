@@ -370,6 +370,33 @@
         return weeks;
     }
 
+    // 휴무백업표 덮어쓰기: 시트와 상관없이 어드민 기준으로 고쳐 보여줌 (시트를 나중에 같게 고쳐도 결과는 같음)
+    //   bk: 백업 줄(없으면 추가) 그날 칸 = v / offAdd·offDel: 휴무자 칸에 이름 넣기·빼기
+    const DAY_FIX = [   // 10/30 본부장님: 11/1 주는 어드민이 맞음
+        { d: '2026-11-02', bk: '서태교', v: '712B,713A' }, { d: '2026-11-02', bk: '양순옥', v: '' }, { d: '2026-11-02', offDel: '한주연' },
+        { d: '2026-11-04', bk: '김대일', v: '712B,713A' }, { d: '2026-11-04', bk: '양순옥', v: '' },
+        { d: '2026-11-04', offAdd: '천장근' }, { d: '2026-11-05', offAdd: '천장근' },
+        { d: '2026-11-04', bk: '이현주', v: '707A,707C' }, { d: '2026-11-05', bk: '이현주', v: '707A,707C' },
+    ];
+    function applyDayFix(weeks) {
+        DAY_FIX.forEach(f => weeks.forEach(w => {
+            const k = w.dates.indexOf(f.d);
+            if (k < 0) return;
+            if (f.bk) {
+                let r = w.backup.find(x => x.name === f.bk);
+                if (!r) { r = { name: f.bk, cells: ['', '', '', '', '', '', ''] }; w.backup.push(r); }
+                r.cells[k] = f.v;
+            }
+            if (f.offDel) w.off.forEach(r => { if (r.cells[k] === f.offDel) r.cells[k] = ''; });
+            if (f.offAdd && !w.off.some(r => r.cells[k] === f.offAdd)) {
+                const r = w.off.find(x => !x.cells[k]);
+                if (r) r.cells[k] = f.offAdd;
+                else { const c = ['', '', '', '', '', '', '']; c[k] = f.offAdd; w.off.push({ no: String(w.off.length + 1), cells: c }); }
+            }
+        }));
+        return weeks;
+    }
+
     // 라우트는 같은 번호끼리 줄여 씀: '516C,516D' → 516CD, '712A,712B,713A' → 712AB / 713A (야간과 같은 표기)
     function toks(v) {   // 같은 번호끼리 모아 글자 순서대로 — '712B,713A,712A' → 712AB / 713A
         const out = [], byNo = {};
@@ -411,7 +438,7 @@
         if (st.req) return st.req;
         st.req = fetch(csvUrl(DAY_SHEETS[i].url), { cache: 'no-store' })
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-            .then(t => { st.weeks = parseDaySheet(parseCSV(t), DAY_SHEETS[i].from); st.at = Date.now(); st.fail = false; })
+            .then(t => { st.weeks = applyDayFix(parseDaySheet(parseCSV(t), DAY_SHEETS[i].from)); st.at = Date.now(); st.fail = false; })
             .catch(e => { if (!st.weeks) st.fail = true; if (window.console) console.warn('주간 시트 불러오기 실패 → 시트 화면으로 대체', e); })
             .then(() => { st.req = null; });
         return st.req;
