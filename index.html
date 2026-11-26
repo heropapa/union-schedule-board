@@ -229,6 +229,7 @@
         { from: '2026-09-13', to: '2026-10-10', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRhHcQAYNAu1bKNHdWQQfOFgwbnoKAgvewnvdqim0pZW1zed1OwpQrat_hpSph3Pq8lEo2XEGikZAOj/pubhtml?gid=780158230&single=true' },
         { from: '2026-10-11', to: '2026-11-07', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTnCeG8P2qHQjc-ft4cu0dqzlQOKRtakV_B6zTJMLCGGQLT98SSkiu_OKc6GEhkoAIsEEUGdYO81WMp/pubhtml?gid=780158230&single=true' },
         { from: '2026-11-08', to: '2026-12-05', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTQPIjoI69zKm2z-RjMl3CUbhXdiwsedgV8RRqz95i6buBT3NXLVLom0sjSlNff02WxaRwEpXlElRK/pubhtml?gid=780158230&single=true' },
+        { from: '2026-12-06', to: '2027-01-02', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRpwvMt2DbjGqWzMspBpwUpxA-oOAMQhkGfkAcZKLv5g3xVhZhJPPwfOIlTNQ27Vwl30Ivehnjw_LMo/pubhtml?gid=780158230&single=true' },   // 2026_부산23주간_연말
     ];
     // 야간: night-data.js 는 엑셀에서 자동 생성 (tools/convert_night.py)
     // ================================================================
@@ -382,6 +383,11 @@
         { d: '2026-11-27', bk: '김경호', v: '' }, { d: '2026-11-27', offDel: '이현주' },
         { d: '2026-12-04', bk: '이정길', v: '704B' }, { d: '2026-12-04', offDel: '이현주' }, { d: '2026-12-04', bk: '이현주', v: '713A' },
         { d: '2026-12-05', bk: '김민교', v: '705A,705D' }, { d: '2026-12-05', bk: '서태교', v: '705B,705C' }, { d: '2026-12-05', offAdd: '이현주' },
+        // 11/26 본부장님: 12/6~ 월요일 713A 는 김천수가 업어서 감 (시트엔 713A 빈 칸)
+        { d: '2026-12-07', offDel: '713A' }, { d: '2026-12-07', bk: '김천수', v: '713A' },
+        { d: '2026-12-14', offDel: '713A' }, { d: '2026-12-14', bk: '김천수', v: '713A' },
+        { d: '2026-12-21', offDel: '713A' }, { d: '2026-12-21', bk: '김천수', v: '713A' },
+        { d: '2026-12-28', offDel: '713A' }, { d: '2026-12-28', bk: '김천수', v: '713A' },
     ];
     function applyDayFix(weeks) {
         DAY_FIX.forEach(f => weeks.forEach(w => {
