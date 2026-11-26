@@ -218,6 +218,7 @@
 
 <script src="night-data.js"></script>
 <script src="day-data.js"></script>
+<script src="day-backup-data.js"></script>
 <script src="night-admin-data.js"></script>
 <script src="region-data.js"></script>
 <script>
@@ -229,7 +230,7 @@
         { from: '2026-09-13', to: '2026-10-10', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRhHcQAYNAu1bKNHdWQQfOFgwbnoKAgvewnvdqim0pZW1zed1OwpQrat_hpSph3Pq8lEo2XEGikZAOj/pubhtml?gid=780158230&single=true' },
         { from: '2026-10-11', to: '2026-11-07', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTnCeG8P2qHQjc-ft4cu0dqzlQOKRtakV_B6zTJMLCGGQLT98SSkiu_OKc6GEhkoAIsEEUGdYO81WMp/pubhtml?gid=780158230&single=true' },
         { from: '2026-11-08', to: '2026-12-05', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTQPIjoI69zKm2z-RjMl3CUbhXdiwsedgV8RRqz95i6buBT3NXLVLom0sjSlNff02WxaRwEpXlElRK/pubhtml?gid=780158230&single=true' },
-        { from: '2026-12-06', to: '2027-01-02', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRpwvMt2DbjGqWzMspBpwUpxA-oOAMQhkGfkAcZKLv5g3xVhZhJPPwfOIlTNQ27Vwl30Ivehnjw_LMo/pubhtml?gid=780158230&single=true' },   // 2026_부산23주간_연말
+        { from: '2026-12-06', to: '2027-01-02', data: '2026-12-06' },   // 시트 안 씀: 어드민 업로드 기준 (day-backup-data.js, 스케쥴관리/도구/busan_board_backup.py)
     ];
     // 야간: night-data.js 는 엑셀에서 자동 생성 (tools/convert_night.py)
     // ================================================================
@@ -383,33 +384,6 @@
         { d: '2026-11-27', bk: '김경호', v: '' }, { d: '2026-11-27', offDel: '이현주' },
         { d: '2026-12-04', bk: '이정길', v: '704B' }, { d: '2026-12-04', offDel: '이현주' }, { d: '2026-12-04', bk: '이현주', v: '713A' },
         { d: '2026-12-05', bk: '김민교', v: '705A,705D' }, { d: '2026-12-05', bk: '서태교', v: '705B,705C' }, { d: '2026-12-05', offAdd: '이현주' },
-        // 11/26 본부장님: 12/6~ 월요일 김천수는 자기 714A·714D 에 713A 까지 업어서 감 (시트엔 713A 빈 칸)
-        { d: '2026-12-07', offDel: '713A' }, { d: '2026-12-07', bk: '김천수', v: '714A,714D + 713A' },
-        { d: '2026-12-14', offDel: '713A' }, { d: '2026-12-14', bk: '김천수', v: '714A,714D + 713A' },
-        { d: '2026-12-21', offDel: '713A' }, { d: '2026-12-21', bk: '김천수', v: '714A,714D + 713A' },
-        { d: '2026-12-28', offDel: '713A' }, { d: '2026-12-28', bk: '김천수', v: '714A,714D + 713A' },
-        // 11/26 본부장님: 대저(701·702) 표 — 김다빈 백업 자리와 그 주인 휴무 (시트엔 없음)
-        { d: '2026-12-07', bk: '김다빈', v: '702B,702C' }, { d: '2026-12-07', offAdd: '김명건' },
-        { d: '2026-12-09', bk: '김다빈', v: '701A,701C' }, { d: '2026-12-09', offAdd: '박성민' },
-        { d: '2026-12-10', bk: '김다빈', v: '701B,701D' }, { d: '2026-12-10', offAdd: '김건희' },
-        { d: '2026-12-11', bk: '김다빈', v: '702A,702D' }, { d: '2026-12-11', offAdd: '이정혁' },
-        { d: '2026-12-12', bk: '김다빈', v: '702B,702C' }, { d: '2026-12-12', offAdd: '김명건' },
-        { d: '2026-12-14', bk: '김다빈', v: '702B,702C' }, { d: '2026-12-14', offAdd: '김명건' },
-        { d: '2026-12-15', bk: '김다빈', v: '701B,701D' }, { d: '2026-12-15', offAdd: '김건희' },
-        { d: '2026-12-16', bk: '김다빈', v: '702A,702D' }, { d: '2026-12-16', offAdd: '이정혁' },
-        { d: '2026-12-17', bk: '김다빈', v: '702B,702C' }, { d: '2026-12-17', offAdd: '김명건' },
-        { d: '2026-12-19', bk: '김다빈', v: '701A,701C' }, { d: '2026-12-19', offAdd: '박성민' },
-        { d: '2026-12-20', bk: '김다빈', v: '701B,701D' }, { d: '2026-12-20', offAdd: '김건희' },
-        { d: '2026-12-21', bk: '김다빈', v: '702A,702D' }, { d: '2026-12-21', offAdd: '이정혁' },
-        { d: '2026-12-22', bk: '김다빈', v: '702B,702C' }, { d: '2026-12-22', offAdd: '김명건' },
-        { d: '2026-12-24', bk: '김다빈', v: '701B,701D' }, { d: '2026-12-24', offAdd: '김건희' },
-        { d: '2026-12-25', bk: '김다빈', v: '701A,701C' }, { d: '2026-12-25', offAdd: '박성민' },
-        { d: '2026-12-26', bk: '김다빈', v: '702A,702D' }, { d: '2026-12-26', offAdd: '이정혁' },
-        { d: '2026-12-27', bk: '김다빈', v: '702B,702C' }, { d: '2026-12-27', offAdd: '김명건' },
-        { d: '2026-12-29', bk: '김다빈', v: '701A,701C' }, { d: '2026-12-29', offAdd: '박성민' },
-        { d: '2026-12-30', bk: '김다빈', v: '701B,701D' }, { d: '2026-12-30', offAdd: '김건희' },
-        { d: '2026-12-31', bk: '김다빈', v: '702A,702D' }, { d: '2026-12-31', offAdd: '이정혁' },
-        { d: '2027-01-01', bk: '김다빈', v: '702B,702C' }, { d: '2027-01-01', offAdd: '김명건' },
     ];
     function applyDayFix(weeks) {
         DAY_FIX.forEach(f => weeks.forEach(w => {
@@ -471,6 +445,12 @@
     function loadDay(i) {
         const st = dayData[i] = dayData[i] || {};
         if (st.req) return st.req;
+        if (DAY_SHEETS[i].data) {   // 시트 대신 게시판 데이터(어드민 기준)
+            const src = window.DAY_BK && window.DAY_BK[DAY_SHEETS[i].data];
+            if (src) { st.weeks = applyDayFix(JSON.parse(JSON.stringify(src))); st.at = Date.now(); st.fail = false; }
+            else st.fail = true;
+            return Promise.resolve();
+        }
         st.req = fetch(csvUrl(DAY_SHEETS[i].url), { cache: 'no-store' })
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
             .then(t => { st.weeks = applyDayFix(parseDaySheet(parseCSV(t), DAY_SHEETS[i].from)); st.at = Date.now(); st.fail = false; })
@@ -481,6 +461,7 @@
     function dayFallback(i) {   // 예전 방식: 시트 화면을 축소해서 띄움
         const f = document.querySelectorAll('#dayFrames .frame')[i];
         if (!f || f.querySelector('iframe')) return;
+        if (!DAY_SHEETS[i].url) { f.innerHTML = '<div class="dmsg">표를 불러오지 못했습니다</div>'; return; }
         f.classList.remove('native');
         f.innerHTML = '<div class="loading">로딩중...</div>';
         const ifr = document.createElement('iframe');
@@ -500,7 +481,7 @@
             <div class="dwrap">
                 <div class="dbar"><span class="rng">${md(ws[0].dates[0])} ~ ${md(ws[ws.length - 1].dates[6])}</span></div>
                 ${tableHtml(ws)}
-                <div class="dfoot">구글시트에서 바로 불러옵니다 · 시트를 고치면 몇 분 안에 반영 · 라우트는 516C,516D → 516CD 처럼 줄여 표시 · 원본은 오른쪽 위 ↗</div>
+                <div class="dfoot">${DAY_SHEETS[i].data ? '쿠팡 어드민 업로드 기준 · 라우트는 516C,516D → 516CD 처럼 줄여 표시' : '구글시트에서 바로 불러옵니다 · 시트를 고치면 몇 분 안에 반영 · 라우트는 516C,516D → 516CD 처럼 줄여 표시 · 원본은 오른쪽 위 ↗'}</div>
             </div>`;
         if (keepScroll) { f.scrollTop = top; return; }
         f.scrollTop = 0;
@@ -521,7 +502,7 @@
         const frames = document.querySelectorAll('#dayFrames .frame');
         frames.forEach((f, j) => { f.hidden = j !== i; });
         const open = document.getElementById('dayOpen');
-        if (open) open.href = embedUrl(DAY_SHEETS[i].url);
+        if (open) { open.hidden = !DAY_SHEETS[i].url; if (DAY_SHEETS[i].url) open.href = embedUrl(DAY_SHEETS[i].url); }
         const f = frames[i];
         if (!f || f.querySelector('iframe')) return;   // 이미 시트 화면으로 대체된 기간
         const st = dayData[i];
